@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens (Section 4). Values are RGB triplets so Tailwind's
+ * <alpha-value> mechanism works. The token STRUCTURE is fixed; the exact
+ * hex values are the proposed starting palette from the spec and can be
+ * tightened later without touching any component.
+ */
+@layer base {
+  /* Midnight — warm brown (the reference dark theme). Token NAMES unchanged;
+     only the values are the reference palette. */
+  :root,
+  [data-theme="midnight"] {
+    --surface-base: 26 22 17; /* #1A1611 */
+    --surface-raised: 36 28 18; /* #241C12 */
+    --surface-inset: 46 36 23; /* #2E2417 */
+    --text-primary: 247 239 225; /* #F7EFE1 */
+    --text-muted: 184 169 136; /* #B8A988 */
+    --accent-gold: 201 160 92; /* #C9A05C */
+    --positive: 127 168 138; /* #7FA88A muted sage */
+    --attention: 201 138 91; /* #C98A5B muted amber */
+    --border-hairline: 58 47 34; /* #3A2F22 */
+    --hero: 26 22 17; /* #1A1611 */
+    --hero-text: 247 239 225; /* #F7EFE1 */
+    /* Wallpaper tint (§3): defaults to the base canvas, so "None" = today. */
+    --wallpaper: var(--surface-base);
+    /* Two-part card shadow (§1): warm-brown reference values. */
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+    --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.4), 0 18px 40px -16px rgb(0 0 0 / 0.6);
+    color-scheme: dark;
+  }
+
+  /* Soft — cream (the reference light theme). */
+  [data-theme="soft"] {
+    --surface-base: 247 239 225; /* #F7EFE1 */
+    --surface-raised: 255 255 255; /* #FFFFFF */
+    --surface-inset: 239 230 211; /* #EFE6D3 */
+    --text-primary: 32 24 8; /* #201808 */
+    --text-muted: 107 93 72; /* #6B5D48 */
+    --accent-gold: 201 160 92; /* #C9A05C */
+    --positive: 78 122 92; /* #4E7A5C */
+    --attention: 176 110 59; /* #B06E3B */
+    --border-hairline: 234 223 199; /* #EADFC7 */
+    --hero: 36 28 18; /* #241C12 dark ink card on cream */
+    --hero-text: 247 239 225; /* #F7EFE1 */
+    --wallpaper: var(--surface-base);
+    /* Two-part card shadow (§1): warm-brown reference values. */
+    --shadow: 0 1px 2px rgb(36 28 18 / 0.04), 0 8px 24px -12px rgb(36 28 18 / 0.12);
+    --shadow-lift: 0 2px 4px rgb(36 28 18 / 0.06), 0 18px 40px -16px rgb(36 28 18 / 0.22);
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-base text-ink font-sans antialiased;
+    font-feature-settings: "cv01" 1;
+    /* Calm 200ms ease when the theme or tint changes (§8). The reduced-motion
+       block below neutralises this for users who ask for less motion. */
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /*
+   * Amounts keep a TABULAR serif (Fraunces) so digits line up in columns (§4).
+   * Titles use Playfair via `font-display`; Playfair lacks tabular figures, so it
+   * is only ever used for headings and the single hero number, never a column.
+   */
+  .font-amount {
+    font-family: "Fraunces", "Newsreader", Georgia, serif;
+    font-feature-settings: "tnum" 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  /* The tinted canvas (§3, §6): one background layer behind everything. */
+  .wallpaper-canvas {
+    background: rgb(var(--wallpaper));
+    transition: background-color 0.2s ease;
+  }
+
+  /* Respect reduced motion (Section 4). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent-gold));
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /*
+   * The single card look (§1, §7): the raised surface, a hairline, a 16px
+   * radius, and the two-part shadow (tight contact + wide ambient) that makes it
+   * read as "floating" above the tinted canvas. Padding is set by the Card
+   * component (32px) for generous breathing room.
+   */
+  .card {
+    @apply bg-raised border border-hairline rounded-card shadow-card;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .hairline {
+    @apply border-hairline;
+  }
+}

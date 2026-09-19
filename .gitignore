@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test / coverage
+coverage/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Local scratch / PDF extraction artifacts (not part of the product)
+extract.js
+extract2.js
+spec.txt
+spec2.txt
+
+# Accidental nested copy of the repository (created during an earlier folder move).
+# Not part of the product; excluded from git and tooling. Safe to remove.
+/premierwork-all-in-one-personal-finance/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# PWA generated
+dev-dist/
