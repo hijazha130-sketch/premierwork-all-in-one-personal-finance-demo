@@ -11,7 +11,10 @@ import path from "node:path";
 
 const dist = "dist";
 const outDir = "docs";
-let html = fs.readFileSync(path.join(dist, "index.html"), "utf8");
+// The built entry may be index.html or index.src.html depending on config.
+const htmlName = fs.readdirSync(dist).find((f) => f.endsWith(".html"));
+if (!htmlName) throw new Error("No built .html found in dist/");
+let html = fs.readFileSync(path.join(dist, htmlName), "utf8");
 
 // Inline every module script: <script type="module" ... src="./assets/x.js"></script>
 html = html.replace(
@@ -38,9 +41,17 @@ html = html.replace(
 html = html.replace(/<link\b[^>]*\brel="modulepreload"[^>]*>/g, "");
 html = html.replace(/<link\b[^>]*\bhref="[^"]*(?:manifest\.webmanifest|registerSW\.js)"[^>]*>/g, "");
 
-fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(path.join(outDir, "index.html"), html, "utf8");
-fs.writeFileSync(path.join(outDir, ".nojekyll"), "", "utf8"); // let GitHub Pages serve it as-is
+// Write to docs/ (Pages "/docs" source) AND repo root (Pages "/root" source),
+// so the demo works whichever GitHub Pages folder is selected.
+const favicon = fs.existsSync(path.join(dist, "favicon.svg"))
+  ? fs.readFileSync(path.join(dist, "favicon.svg"))
+  : null;
+for (const dir of [outDir, "."]) {
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "index.html"), html, "utf8");
+  fs.writeFileSync(path.join(dir, ".nojekyll"), "", "utf8"); // serve as-is, no Jekyll
+  if (favicon) fs.writeFileSync(path.join(dir, "favicon.svg"), favicon);
+}
 
 const kb = (Buffer.byteLength(html, "utf8") / 1024).toFixed(0);
 const inlinedScript = /<script type="module">/.test(html);

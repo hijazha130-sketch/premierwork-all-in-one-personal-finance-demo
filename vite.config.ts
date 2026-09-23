@@ -38,7 +38,12 @@ export default defineConfig({
           }),
         ]),
   ],
-  build: SINGLEFILE ? { cssCodeSplit: false, assetsInlineLimit: 100_000_000 } : {},
+  build: {
+    // The source entry is index.src.html; the repo's root index.html is the
+    // BUILT single-file that GitHub Pages serves, so they don't collide.
+    rollupOptions: { input: path.resolve(__dirname, "index.src.html") },
+    ...(SINGLEFILE ? { cssCodeSplit: false, assetsInlineLimit: 100_000_000 } : {}),
+  },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },
