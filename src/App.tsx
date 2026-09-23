@@ -1,4 +1,7 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+// DEMO: HashRouter (not BrowserRouter) so the statically-hosted demo survives a
+// page refresh at any route — the path lives in the URL hash, which the server
+// never sees, so GitHub Pages always serves index.html and the app routes itself.
+import { HashRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/state/ThemeProvider";
 import { DataProvider } from "@/state/DataProvider";
 import { useData } from "@/state/dataContext";
@@ -39,7 +42,7 @@ export default function App() {
     <ThemeProvider>
       <DataProvider>
         <CaptureProvider>
-          <BrowserRouter>
+          <HashRouter>
             <Gate>
               <Routes>
                 <Route element={<AppShell />}>
@@ -56,7 +59,7 @@ export default function App() {
                 </Route>
               </Routes>
             </Gate>
-          </BrowserRouter>
+          </HashRouter>
         </CaptureProvider>
       </DataProvider>
     </ThemeProvider>

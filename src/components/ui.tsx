@@ -29,9 +29,9 @@ export function Button({
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  // 32px padding (§7) for generous breathing room; the .card utility carries the
-  // surface, hairline, radius and two-part shadow.
-  return <div className={cx("card p-8", className)}>{children}</div>;
+  // 32px padding on desktop (§7) for generous breathing room; responsive on mobile
+  // so content is never squished.
+  return <div className={cx("card p-5 sm:p-6 md:p-8", className)}>{children}</div>;
 }
 
 export function SectionTitle({ overline, title, subtitle }: { overline?: string; title: string; subtitle?: string }) {
@@ -112,7 +112,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className="inline-flex items-center gap-1 rounded-pill border border-hairline bg-raised p-1"
+      className="inline-flex items-center gap-1 rounded-pill border border-hairline bg-raised p-1 max-w-full overflow-x-auto"
     >
       {options.map((o) => (
         <button
@@ -121,7 +121,7 @@ export function Segmented<T extends string>({
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={cx(
-            "inline-flex items-center gap-2 rounded-pill px-4 py-2 text-sm font-medium transition-colors min-h-[40px]",
+            "inline-flex items-center gap-2 rounded-pill px-3.5 sm:px-4 py-2 text-sm font-medium transition-colors min-h-[40px] whitespace-nowrap shrink-0",
             value === o.value ? "bg-inset text-ink" : "text-muted hover:text-ink",
           )}
         >

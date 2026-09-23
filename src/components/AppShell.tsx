@@ -78,40 +78,39 @@ export function AppShell() {
           </header>
 
           {/* Generous, wide content wrapper — never squeezed into a narrow column. */}
-          <main className="mx-auto w-full max-w-[1200px] px-6 md:px-16 py-8 pb-28 md:pb-16">
+          <main className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 md:px-16 py-6 md:py-8 pb-32 md:pb-16">
             <Outlet />
           </main>
         </div>
       </div>
 
-      {/* Always-present add button — desktop floating */}
+      {/* Always-present add button — desktop floating pill */}
       <button
         onClick={() => openCapture("expense")}
         aria-label="Log a spend"
-        className="hidden md:flex fixed bottom-8 right-8 z-40 h-14 items-center gap-2 rounded-pill bg-gold px-6 text-base font-medium text-base shadow-card hover:opacity-90"
+        className="hidden md:flex fixed bottom-8 right-8 z-40 h-14 items-center gap-2 rounded-pill bg-gold px-6 text-base font-medium text-base shadow-card hover:opacity-90 transition-opacity"
       >
         <PlusIcon /> <span className="text-base font-semibold">Log a spend</span>
       </button>
 
-      {/* Mobile bottom tab bar with center add button */}
+      {/* Always-present add button — mobile floating action button */}
+      <button
+        onClick={() => openCapture("expense")}
+        aria-label="Log a spend"
+        className="md:hidden fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-base shadow-card hover:opacity-90 active:scale-95 transition-transform"
+      >
+        <PlusIcon />
+      </button>
+
+      {/* Mobile bottom tab bar with all 5 destinations (Home, Money, Plan, Wealth, More) */}
       <nav
         className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-hairline bg-raised/95 backdrop-blur"
         aria-label="Primary"
       >
         <div className="grid grid-cols-5 items-center">
-          <BottomLink {...NAV[0]} />
-          <BottomLink {...NAV[1]} />
-          <div className="flex justify-center">
-            <button
-              onClick={() => openCapture("expense")}
-              aria-label="Log a spend"
-              className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-base shadow-card"
-            >
-              <PlusIcon />
-            </button>
-          </div>
-          <BottomLink {...NAV[3]} />
-          <BottomLink {...NAV[4]} />
+          {NAV.map((item) => (
+            <BottomLink key={item.to} {...item} />
+          ))}
         </div>
       </nav>
 

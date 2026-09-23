@@ -41,18 +41,18 @@ export function GoalsView() {
       ) : (
         <>
           <Card>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-2">Saved</div>
-                <MoneyAmount amount={derived.goalsProgress.totalSaved} size="md" tone="positive" />
+                <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted mb-1 sm:mb-2">Saved</div>
+                <MoneyAmount amount={derived.goalsProgress.totalSaved} size="sm" tone="positive" className="sm:text-2xl" />
               </div>
               <div>
-                <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-2">Target</div>
-                <MoneyAmount amount={derived.goalsProgress.totalTarget} size="md" />
+                <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted mb-1 sm:mb-2">Target</div>
+                <MoneyAmount amount={derived.goalsProgress.totalTarget} size="sm" className="sm:text-2xl" />
               </div>
               <div>
-                <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-2">Remaining</div>
-                <MoneyAmount amount={derived.goalsProgress.totalRemaining} size="md" />
+                <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted mb-1 sm:mb-2">Remaining</div>
+                <MoneyAmount amount={derived.goalsProgress.totalRemaining} size="sm" className="sm:text-2xl" />
               </div>
             </div>
           </Card>

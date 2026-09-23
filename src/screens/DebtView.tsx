@@ -61,11 +61,11 @@ export function DebtView() {
               />
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-4">
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-1">Debt-free date</div>
                 {plan.debtFreeDate ? (
-                  <div className="font-display text-2xl text-ink">{formatDateLabel(plan.debtFreeDate, locale)}</div>
+                  <div className="font-display text-xl sm:text-2xl text-ink">{formatDateLabel(plan.debtFreeDate, locale)}</div>
                 ) : (
                   <div className="text-sm text-muted">Not reached at this payment</div>
                 )}

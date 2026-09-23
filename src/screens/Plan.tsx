@@ -119,18 +119,18 @@ function BudgetView() {
       )}
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-2">Planned</div>
-          <MoneyAmount amount={budget.totalPlanned} size="md" />
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <Card className="p-3 sm:p-5 md:p-8">
+          <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted mb-1 sm:mb-2">Planned</div>
+          <MoneyAmount amount={budget.totalPlanned} size="sm" className="sm:text-2xl" />
         </Card>
-        <Card>
-          <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-2">Spent</div>
-          <MoneyAmount amount={budget.totalActual} size="md" tone="attention" />
+        <Card className="p-3 sm:p-5 md:p-8">
+          <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted mb-1 sm:mb-2">Spent</div>
+          <MoneyAmount amount={budget.totalActual} size="sm" tone="attention" className="sm:text-2xl" />
         </Card>
-        <Card>
-          <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-2">Left</div>
-          <MoneyAmount amount={budget.totalRemaining} size="md" tone={budget.totalRemaining < 0 ? "attention" : "positive"} />
+        <Card className="p-3 sm:p-5 md:p-8">
+          <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted mb-1 sm:mb-2">Left</div>
+          <MoneyAmount amount={budget.totalRemaining} size="sm" tone={budget.totalRemaining < 0 ? "attention" : "positive"} className="sm:text-2xl" />
         </Card>
       </div>
 
@@ -233,7 +233,7 @@ function BudgetRow({
           </button>
         )}
       </div>
-      <label className="flex items-center gap-2">
+      <label className="flex items-center gap-2 shrink-0">
         <span className="text-xs text-muted">Planned</span>
         <input
           inputMode="decimal"
@@ -241,7 +241,7 @@ function BudgetRow({
           onChange={(e) => setText(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-          className="w-28 rounded-control bg-inset border border-hairline px-3 py-2 text-right text-ink focus:border-gold outline-none min-h-[44px]"
+          className="w-24 sm:w-28 rounded-control bg-inset border border-hairline px-3 py-2 text-right text-ink focus:border-gold outline-none min-h-[44px]"
         />
       </label>
     </div>
