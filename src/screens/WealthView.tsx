@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useData } from "@/state/dataContext";
 import { Card, SectionTitle, Button, Sheet, Field, TextInput, SelectInput } from "@/components/ui";
 import { MoneyAmount } from "@/components/MoneyAmount";
+import { HelpTip } from "@/components/HelpTip";
 import { parseMajorToMinor } from "@/lib/money";
 import { todayIso } from "@/lib/period";
 import type { Asset, AssetKind } from "@/domain/types";
@@ -32,7 +33,10 @@ export function WealthView() {
 
       {/* Headline net worth + change */}
       <Card>
-        <div className="text-xs font-semibold uppercase tracking-widest text-gold mb-2">Net worth</div>
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-widest text-gold">Net worth</span>
+          <HelpTip topic="netWorth" />
+        </div>
         <MoneyAmount amount={nw.netWorth} size="hero" tone={nw.netWorth < 0 ? "attention" : "default"} />
         {series.length >= 2 && (
           <p className="mt-2 text-sm text-muted">

@@ -1,6 +1,15 @@
 import { describe, it, expect } from "vitest";
-import type { Debt } from "@/domain/types";
-import { computeDebtPlan, PAYOFF_CAP_MONTHS } from "@/domain/debt";
+import type { Debt, Transaction } from "@/domain/types";
+import { computeDebtPlan, debtBalanceNow, PAYOFF_CAP_MONTHS } from "@/domain/debt";
+
+function pay(debtId: string, amount: number, date: string, direction: "in" | "out" = "out"): Transaction {
+  return {
+    id: `t${date}-${amount}`, date, amount, direction, type: "expense", categoryId: null,
+    accountId: "a1", personId: null, source: "manual", cleared: true, transferGroupId: null,
+    recurringRuleId: null, occurrenceDate: null, goalId: null, debtId, investmentId: null,
+    createdAt: 0, updatedAt: 0,
+  };
+}
 
 let seq = 0;
 function debt(over: Partial<Debt> = {}): Debt {
@@ -115,5 +124,35 @@ describe("debt engine — amortization (§8.2, load-bearing)", () => {
     expect(plan.totalInterest).toBe(0);
     expect(plan.debtFreeDate).toBeNull();
     expect(plan.anyWontPayOff).toBe(false);
+  });
+});
+
+describe("debt balance now (FD-6.1/D1)", () => {
+  const d = debt({ id: "D", currentBalance: 100000_00, balanceAsOf: "2026-09-01" });
+
+  it("subtracts a linked payment dated AFTER the anchor", () => {
+    expect(debtBalanceNow(d, [pay("D", 5000_00, "2026-09-10")])).toBe(95000_00);
+  });
+
+  it("ignores a payment dated ON or BEFORE the anchor (already reflected in the typed balance)", () => {
+    expect(debtBalanceNow(d, [pay("D", 5000_00, "2026-09-01"), pay("D", 7000_00, "2026-08-20")])).toBe(100000_00);
+  });
+
+  it("sums multiple later payments and ignores other debts / non-out", () => {
+    const txs = [
+      pay("D", 5000_00, "2026-09-05"), pay("D", 3000_00, "2026-09-20"),
+      pay("OTHER", 9000_00, "2026-09-10"), pay("D", 2000_00, "2026-09-25", "in"),
+    ];
+    expect(debtBalanceNow(d, txs)).toBe(92000_00); // 100,000 − 5,000 − 3,000
+  });
+
+  it("never goes below 0", () => {
+    expect(debtBalanceNow(d, [pay("D", 250000_00, "2026-09-10")])).toBe(0);
+  });
+
+  it("re-anchoring (later balanceAsOf) resets — earlier payments no longer count", () => {
+    const reanchored = debt({ id: "D", currentBalance: 60000_00, balanceAsOf: "2026-09-15" });
+    expect(debtBalanceNow(reanchored, [pay("D", 5000_00, "2026-09-10")])).toBe(60000_00);
+    expect(debtBalanceNow(reanchored, [pay("D", 5000_00, "2026-09-20")])).toBe(55000_00);
   });
 });

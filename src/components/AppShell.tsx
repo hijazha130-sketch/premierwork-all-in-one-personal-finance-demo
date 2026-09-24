@@ -6,6 +6,7 @@ import { useData } from "@/state/dataContext";
 import { applyWallpaper } from "@/lib/wallpapers";
 import { Segmented } from "@/components/ui";
 import { QuickCapture } from "@/screens/QuickCapture";
+import { WelcomeBanner } from "@/components/WelcomeBanner";
 
 /**
  * The persistent application shell (Section 2 & 5): brand + context header, a
@@ -51,9 +52,9 @@ export function AppShell() {
             ))}
           </nav>
           <div className="mt-auto pt-8">
-            <div className="text-xs font-semibold uppercase tracking-widest text-gold mb-2">Demo</div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold mb-2">On-device</div>
             <p className="text-xs text-muted leading-relaxed">
-              A live demo — try anything you like. Your changes reset when you reload; nothing is saved.
+              All data stays on this device. Works offline.
             </p>
           </div>
         </aside>
@@ -79,6 +80,7 @@ export function AppShell() {
 
           {/* Generous, wide content wrapper — never squeezed into a narrow column. */}
           <main className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 md:px-16 py-6 md:py-8 pb-32 md:pb-16">
+            <WelcomeBanner />
             <Outlet />
           </main>
         </div>
@@ -121,15 +123,24 @@ export function AppShell() {
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
+  const { settings } = useData();
+  // §7.4: the planner can be renamed. When it is, show that; else our own name.
+  const custom = settings?.plannerTitle?.trim();
   return (
     <div className="flex items-center gap-3">
       <div className="flex h-10 w-10 items-center justify-center rounded-card bg-inset font-serif text-xl text-gold">
-        A
+        {(custom?.[0] ?? "A").toUpperCase()}
       </div>
       {!compact && (
         <div className="leading-tight">
-          <div className="font-serif text-sm text-ink">All-in-One</div>
-          <div className="font-serif text-base text-ink -mt-0.5">Personal Finance</div>
+          {custom ? (
+            <div className="font-serif text-base text-ink">{custom}</div>
+          ) : (
+            <>
+              <div className="font-serif text-sm text-ink">All-in-One</div>
+              <div className="font-serif text-base text-ink -mt-0.5">Personal Finance</div>
+            </>
+          )}
           <div className="text-[10px] font-semibold uppercase tracking-widest text-gold mt-0.5">
             by PremierWork
           </div>

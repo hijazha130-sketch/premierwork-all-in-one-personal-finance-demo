@@ -24,6 +24,13 @@
     --border-hairline: 58 47 34; /* #3A2F22 */
     --hero: 26 22 17; /* #1A1611 */
     --hero-text: 247 239 225; /* #F7EFE1 */
+    /* Spending-group chart colours (Phase 6 §8) — Midnight (dark) values,
+       validated for colour-blind separation. Names + order fixed. */
+    --group-bills: #d95926;
+    --group-everyday: #3987e5;
+    --group-fun: #d55181;
+    --group-debt: #c98500;
+    --group-saving: #199e70;
     /* Wallpaper tint (§3): defaults to the base canvas, so "None" = today. */
     --wallpaper: var(--surface-base);
     /* Two-part card shadow (§1): warm-brown reference values. */
@@ -45,6 +52,12 @@
     --border-hairline: 234 223 199; /* #EADFC7 */
     --hero: 36 28 18; /* #241C12 dark ink card on cream */
     --hero-text: 247 239 225; /* #F7EFE1 */
+    /* Spending-group chart colours (Phase 6 §8) — Soft (light) values. */
+    --group-bills: #eb6834;
+    --group-everyday: #2a78d6;
+    --group-fun: #e87ba4;
+    --group-debt: #eda100;
+    --group-saving: #1baf7a;
     --wallpaper: var(--surface-base);
     /* Two-part card shadow (§1): warm-brown reference values. */
     --shadow: 0 1px 2px rgb(36 28 18 / 0.04), 0 8px 24px -12px rgb(36 28 18 / 0.12);

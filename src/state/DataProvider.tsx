@@ -1,6 +1,8 @@
-import { useCallback, useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDB } from "@/data/db";
+import { loadDemoData } from "@/data/demo";
+import { isDemo } from "@/lib/edition";
 import { FinanceRepository } from "@/data/repository";
 import { balancesByAccount, totalBalance } from "@/domain/balance";
 import { moneyIn, moneyOut } from "@/domain/aggregation";
@@ -9,8 +11,17 @@ import { computeOccurrences, overdue, upcoming, type Occurrence } from "@/domain
 import { projectCashflow, safeToSpend } from "@/domain/cashflow";
 import { computeBudgetPeriod, fiftyThirtyTwenty, type BudgetInput } from "@/domain/budget";
 import { computeGoals } from "@/domain/goals";
-import { computeDebtPlan } from "@/domain/debt";
+import { computeDebtPlan, debtBalanceNow } from "@/domain/debt";
 import { assetValueAt, netWorthNow, netWorthSeries } from "@/domain/wealth";
+import { buildInOut } from "@/domain/monthGlance";
+import {
+  spendingGroups,
+  dayByDay,
+  untilPayday,
+  nextStepAndChecklist,
+  quickAmounts,
+  computeMilestones,
+} from "@/domain/insights";
 import { DataContext, type DataContextValue } from "@/state/dataContext";
 
 /**
@@ -22,6 +33,25 @@ import { DataContext, type DataContextValue } from "@/state/dataContext";
 export function DataProvider({ children }: { children: ReactNode }) {
   const db = getDB();
   const repo = useMemo(() => new FinanceRepository(db), [db]);
+
+  // First open: bring the app to life with example numbers (Architecture §6).
+  // The demo edition always ensures they are present; the full edition seeds
+  // them only into a truly empty file (never over a real user's data). Load is
+  // idempotent, and the live queries below pick the rows up automatically.
+  const bootedRef = useRef(false);
+  useEffect(() => {
+    if (bootedRef.current) return;
+    bootedRef.current = true;
+    void (async () => {
+      const [nAcc, nTx, nSet] = await Promise.all([
+        db.accounts.count(),
+        db.transactions.count(),
+        db.settings.count(),
+      ]);
+      const emptyFile = nAcc === 0 && nTx === 0 && nSet === 0;
+      if (isDemo || emptyFile) await loadDemoData(db, todayIso());
+    })();
+  }, [db]);
 
   const settings = useLiveQuery(() => repo.getSettings(), []);
   const accounts = useLiveQuery(() => repo.listAccounts(), []);
@@ -64,6 +94,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
   const budgetForPeriod = useCallback((periodKey: string) => computeBudgetPeriod(budgetInput, periodKey), [budgetInput]);
   const fiftyThirtyTwentyForPeriod = useCallback((periodKey: string) => fiftyThirtyTwenty(budgetInput, periodKey), [budgetInput]);
+  // Phase 6 (§7.3): the five spending groups for any range — powers Month at a glance.
+  const spendingForRange = useCallback(
+    (range: DateRange) => spendingGroups(transactions ?? [], new Map((categories ?? []).map((c) => [c.id, c])), range),
+    [transactions, categories],
+  );
+  const inOutForRange = useCallback(
+    (range: DateRange) =>
+      buildInOut(occurrencesForRange(range), transactions ?? [], range, (id) => (recurringRules ?? []).find((r) => r.id === id)?.name),
+    [occurrencesForRange, transactions, recurringRules],
+  );
 
   // Any undefined live query means the first read hasn't resolved yet.
   const loading =
@@ -90,7 +130,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const rules = recurringRules ?? [];
     const overrides = recurringOverrides ?? [];
     const gls = goals ?? [];
-    const dbts = debts ?? [];
+    const dbtsRaw = debts ?? [];
+    // FD-6.1/D1: each debt's balance now reflects linked payments after its anchor.
+    // The pure payoff/net-worth engines read this via currentBalance, unchanged.
+    const dbts = dbtsRaw.map((d) => ({ ...d, currentBalance: debtBalanceNow(d, txns) }));
     const asts = assets ?? [];
     const vals = valuations ?? [];
     const range = monthRange(currentMonth()); // current month, for month in/out and the cash-flow horizon
@@ -116,6 +159,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       safetyFloor: settings?.safetyFloor ?? 0, // FD-4.3: soft emergency cushion
     } as const;
 
+    // Values reused by both the derived block and the Phase 6 insights below.
+    const categoriesById = new Map(cats.map((c) => [c.id, c]));
+    const sts = safeToSpend(acc, txns, occurrences, today, safeToSpendConfig);
+    const nwSeries = netWorthSeries(twelveMonthRange(today), acc, txns, asts, vals, dbts);
+    const currencyCode = settings?.currencyCode ?? "PKR";
+
     return {
       repo,
       loading,
@@ -127,7 +176,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       transactions: txns,
       recurringRules: rules,
       recurringOverrides: overrides,
-      categoriesById: new Map(cats.map((c) => [c.id, c])),
+      categoriesById,
       accountsById: new Map(acc.map((a) => [a.id, a])),
       peopleById: new Map(ppl.map((p) => [p.id, p])),
       recurringRulesById: new Map(rules.map((r) => [r.id, r])),
@@ -136,8 +185,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       budgetPeriodLines: budgetPeriodLines ?? [],
       budgetForPeriod,
       fiftyThirtyTwentyForPeriod,
+      spendingForRange,
+      inOutForRange,
       goals: gls,
-      debts: dbts,
+      debts: dbtsRaw, // raw typed balances — forms re-anchor from these
       assets: asts,
       valuations: vals,
       derived: {
@@ -148,7 +199,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         occurrences,
         upcoming: upcoming(occurrences),
         overdue: overdue(occurrences),
-        safeToSpend: safeToSpend(acc, txns, occurrences, today, safeToSpendConfig),
+        safeToSpend: sts,
         projectedCashflow: projectCashflow(acc, txns, occurrences, range, today),
         // Phase 3 (current month): screens read these; navigated months use the helpers.
         budget: budgetForPeriod(currentPeriodKey),
@@ -163,11 +214,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
         // Phase 5: net worth now + the last-12-months monthly trend. Fed the
         // already-computed balances so account balances are derived once.
         netWorth: netWorthNow(acc, balances, asts, vals, dbts, today),
-        netWorthSeries: netWorthSeries(twelveMonthRange(today), acc, txns, asts, vals, dbts),
+        netWorthSeries: nwSeries,
         assetValues: Object.fromEntries(asts.map((a) => [a.id, assetValueAt(a.id, vals, today)])),
+        // FD-6.1/D1: each debt's "still owed" right now (typed balance − later payments).
+        debtBalances: Object.fromEntries(dbtsRaw.map((d) => [d.id, debtBalanceNow(d, txns)])),
+        // Phase 6 insights (§5.2–5.7): all derived, current month / current period.
+        spending: spendingGroups(txns, categoriesById, range),
+        dayCells: dayByDay(txns, categoriesById, occurrences, currentPeriodKey, today),
+        untilPayday: untilPayday(sts, txns, occurrences, categoriesById, today),
+        nextStep: nextStepAndChecklist(txns, occurrences, rules, acc, today),
+        quickAmounts: quickAmounts(txns, categoriesById, currencyCode, today),
+        milestones: computeMilestones({
+          transactions: txns,
+          categoriesById,
+          occurrences,
+          goals: gls,
+          debts: dbtsRaw,
+          netWorthSeries: nwSeries,
+          today,
+          currencyCode,
+        }),
       },
     };
-  }, [repo, loading, settings, accounts, categories, people, incomeSources, transactions, recurringRules, recurringOverrides, occurrencesForRange, budgetTemplates, budgetPeriodLines, budgetForPeriod, fiftyThirtyTwentyForPeriod, goals, debts, assets, valuations]);
+  }, [repo, loading, settings, accounts, categories, people, incomeSources, transactions, recurringRules, recurringOverrides, occurrencesForRange, budgetTemplates, budgetPeriodLines, budgetForPeriod, fiftyThirtyTwentyForPeriod, spendingForRange, inOutForRange, goals, debts, assets, valuations]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

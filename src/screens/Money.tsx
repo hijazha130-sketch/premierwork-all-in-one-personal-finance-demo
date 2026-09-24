@@ -5,11 +5,13 @@ import { useCapture } from "@/state/CaptureProvider";
 import { Button, Card, SectionTitle, Segmented, SelectInput, TextInput } from "@/components/ui";
 import { MoneyAmount } from "@/components/MoneyAmount";
 import { EmptyState } from "@/components/EmptyState";
+import { HelpTip } from "@/components/HelpTip";
 import { TransactionRow } from "@/components/RecentActivity";
 import { RepeatingRules } from "@/screens/RepeatingRules";
 import { Calendar } from "@/screens/Calendar";
 import { buildLedgerRows } from "@/domain/ledger";
 import { filterTransactions, sumTransactions } from "@/domain/aggregation";
+import { currentMonth, monthRange } from "@/lib/period";
 import type { DateRange } from "@/lib/period";
 
 type MoneyView = "activity" | "repeating" | "calendar";
@@ -65,6 +67,17 @@ export function Money() {
 
   const hasFilters = !!(categoryId || accountId || personId || from || to);
 
+  // Hero (§7.2): this month's bills — how much is cleared vs still to pay.
+  const mr = monthRange(currentMonth());
+  const outThisMonth = derived.occurrences.filter((o) => o.direction === "out" && o.date >= mr.from && o.date <= mr.to);
+  const paidOut = outThisMonth.filter((o) => o.status === "paid").reduce((s, o) => s + o.amount, 0);
+  const stillToPay = outThisMonth.filter((o) => o.status !== "paid").reduce((s, o) => s + o.amount, 0);
+  const billTotal = paidOut + stillToPay;
+  const monthEndLabel = (() => {
+    const [y, m, d] = mr.to.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en", { day: "numeric", month: "short" });
+  })();
+
   if (accounts.length === 0) {
     return (
       <div className="max-w-2xl">
@@ -96,6 +109,23 @@ export function Money() {
               : "What's due and when — planned bills and money you've recorded."
         }
       />
+
+      {/* Hero: still to pay before month end + a paid-vs-to-pay bar. */}
+      {billTotal > 0 && (
+        <Card>
+          <div className="flex items-center gap-2">
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Still to pay before {monthEndLabel}</div>
+            <HelpTip topic="stillToPay" />
+          </div>
+          <MoneyAmount amount={stillToPay} size="hero" tone={stillToPay > 0 ? "default" : "positive"} className="mt-2 block" />
+          <div className="mt-4 h-2 w-full overflow-hidden rounded-pill bg-inset">
+            <div className="h-full rounded-pill bg-positive" style={{ width: `${Math.round((paidOut / billTotal) * 100)}%` }} />
+          </div>
+          <p className="mt-2 text-sm text-muted">
+            <MoneyAmount amount={paidOut} size="sm" tone="positive" /> paid · <MoneyAmount amount={stillToPay} size="sm" tone="muted" /> to go
+          </p>
+        </Card>
+      )}
 
       <Segmented
         ariaLabel="View"

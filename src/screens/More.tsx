@@ -4,9 +4,10 @@ import { useData } from "@/state/dataContext";
 import { useTheme } from "@/state/ThemeProvider";
 import { getDB } from "@/data/db";
 import { downloadBackup, importDatabaseString } from "@/data/backup";
-import { Button, Card, SectionTitle, Segmented } from "@/components/ui";
+import { Button, Card, Field, SectionTitle, Segmented, TextInput } from "@/components/ui";
 import { minorToMajor, parseMajorToMinor } from "@/lib/money";
 import { WALLPAPERS } from "@/lib/wallpapers";
+import type { Settings } from "@/domain/types";
 
 /**
  * More (Section 5 & 8). The hub: manage accounts, groups and people; re-run
@@ -54,6 +55,8 @@ export function More() {
           </Link>
         </div>
       </Card>
+
+      <MakeItYours />
 
       <Card>
         <h2 className="font-display text-2xl text-ink mb-2">Appearance</h2>
@@ -156,6 +159,75 @@ export function More() {
         </p>
       </Card>
     </div>
+  );
+}
+
+type BigLabel = NonNullable<Settings["bigNumberLabel"]>;
+
+/**
+ * Make it yours (Architecture §7.4). Your name in the greeting, a name for the
+ * planner (shown in the sidebar and header), and what to call the big number —
+ * wording only, the number never changes. Saved as you type.
+ */
+function MakeItYours() {
+  const { settings, repo } = useData();
+  const label = settings?.bigNumberLabel ?? "safeToSpend";
+  return (
+    <Card>
+      <h2 className="font-display text-2xl text-ink mb-1">Make it yours</h2>
+      <p className="text-sm text-muted mb-5">Small touches. Nothing here changes a single number — only the words.</p>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="What should we call you?">
+          <SavedText
+            value={settings?.displayName ?? ""}
+            placeholder="Your name (optional)"
+            onSave={(v) => repo.saveSettings({ displayName: v || undefined })}
+          />
+        </Field>
+        <Field label="Name your planner">
+          <SavedText
+            value={settings?.plannerTitle ?? ""}
+            placeholder="All-in-One Personal Finance"
+            onSave={(v) => repo.saveSettings({ plannerTitle: v || undefined })}
+          />
+        </Field>
+      </div>
+
+      <div className="mt-5">
+        <div className="text-sm font-medium text-ink mb-2">What to call the big number</div>
+        <Segmented
+          ariaLabel="Big number wording"
+          value={label as BigLabel}
+          onChange={(v) => repo.saveSettings({ bigNumberLabel: v })}
+          options={[
+            { value: "safeToSpend", label: "Safe to spend" },
+            { value: "leftToSpend", label: "Left to spend" },
+            { value: "okToSpend", label: "OK to spend" },
+          ]}
+        />
+      </div>
+    </Card>
+  );
+}
+
+/** A text field that saves what you type (debounced a touch to avoid a write per key). */
+function SavedText({ value, placeholder, onSave }: { value: string; placeholder?: string; onSave: (v: string) => void }) {
+  const [text, setText] = useState(value);
+  const [last, setLast] = useState(value);
+  if (value !== last) {
+    setLast(value);
+    setText(value);
+  }
+  return (
+    <TextInput
+      value={text}
+      placeholder={placeholder}
+      onChange={(e) => {
+        setText(e.target.value);
+        onSave(e.target.value.trim());
+      }}
+    />
   );
 }
 

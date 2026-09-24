@@ -4,8 +4,9 @@ import { useCapture } from "@/state/CaptureProvider";
 import { Card, Button, Sheet, Field, TextInput, SelectInput } from "@/components/ui";
 import { MoneyAmount } from "@/components/MoneyAmount";
 import { EmptyState } from "@/components/EmptyState";
+import { HelpTip } from "@/components/HelpTip";
 import { parseMajorToMinor, minorToMajor } from "@/lib/money";
-import { formatDateLabel } from "@/lib/period";
+import { formatDateLabel, todayIso } from "@/lib/period";
 import type { Goal } from "@/domain/types";
 
 /**
@@ -21,6 +22,11 @@ export function GoalsView() {
 
   const rows = derived.goalsProgress.goals;
   const byId = new Map(goals.map((g) => [g.id, g]));
+  const today = todayIso();
+  const nearestDate = goals
+    .filter((g) => !g.archived && g.targetDate && g.targetDate >= today)
+    .map((g) => g.targetDate as string)
+    .sort()[0];
 
   return (
     <div className="space-y-6">
@@ -40,6 +46,19 @@ export function GoalsView() {
         />
       ) : (
         <>
+          {/* Hero (§7.2): one big number — put away so far — plus what's left and the nearest date. */}
+          <Card>
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-semibold uppercase tracking-widest text-gold">Put away so far</div>
+              <HelpTip topic="putAway" />
+            </div>
+            <MoneyAmount amount={derived.goalsProgress.totalSaved} size="hero" tone="default" className="mt-2 block" />
+            <p className="mt-2 text-sm text-muted">
+              <MoneyAmount amount={derived.goalsProgress.totalRemaining} size="sm" tone="muted" /> still to find
+              {nearestDate && <> · nearest date {formatDateLabel(nearestDate, locale)}</>}
+            </p>
+          </Card>
+
           <Card>
             <div className="grid grid-cols-3 gap-2 sm:gap-4">
               <div>

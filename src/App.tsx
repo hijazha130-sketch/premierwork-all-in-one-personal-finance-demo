@@ -1,7 +1,10 @@
 // DEMO: HashRouter (not BrowserRouter) so the statically-hosted demo survives a
-// page refresh at any route — the path lives in the URL hash, which the server
-// never sees, so GitHub Pages always serves index.html and the app routes itself.
-import { HashRouter, Routes, Route } from "react-router-dom";
+// page refresh at any route — the path lives in the URL hash, which GitHub Pages
+// never sees, so it always serves index.html and the app routes itself. Deep
+// links therefore take the hash form, e.g. …/#/?start=debt.
+import { useEffect, useRef } from "react";
+import { HashRouter, Routes, Route, useNavigate, useSearchParams } from "react-router-dom";
+import { startScreenPath } from "@/lib/edition";
 import { ThemeProvider } from "@/state/ThemeProvider";
 import { DataProvider } from "@/state/DataProvider";
 import { useData } from "@/state/dataContext";
@@ -12,6 +15,7 @@ import { Money } from "@/screens/Money";
 import { Plan } from "@/screens/Plan";
 import { WealthView } from "@/screens/WealthView";
 import { More } from "@/screens/More";
+import { Milestones } from "@/screens/Milestones";
 import { Setup } from "@/screens/Setup";
 import { Accounts } from "@/screens/manage/Accounts";
 import { Groups } from "@/screens/manage/Groups";
@@ -37,6 +41,24 @@ function Gate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Deep-link handler (Architecture §6.3): `?start=today|bills|debt|goals|wealth|plan`
+ * opens the matching screen once, then strips the param. This is how each Etsy
+ * listing's demo link opens on its own hero screen.
+ */
+function StartHandler() {
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const handled = useRef(false);
+  useEffect(() => {
+    if (handled.current) return;
+    handled.current = true;
+    const path = startScreenPath(params.get("start"));
+    if (path) navigate(path, { replace: true });
+  }, [params, navigate]);
+  return null;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -44,6 +66,7 @@ export default function App() {
         <CaptureProvider>
           <HashRouter>
             <Gate>
+              <StartHandler />
               <Routes>
                 <Route element={<AppShell />}>
                   <Route index element={<Home />} />
@@ -51,6 +74,7 @@ export default function App() {
                   <Route path="plan" element={<Plan />} />
                   <Route path="grow" element={<WealthView />} />
                   <Route path="more" element={<More />} />
+                  <Route path="milestones" element={<Milestones />} />
                   <Route path="setup" element={<Setup />} />
                   <Route path="accounts" element={<Accounts />} />
                   <Route path="groups" element={<Groups />} />

@@ -4,6 +4,7 @@ import { useCapture } from "@/state/CaptureProvider";
 import { Card, Button, Segmented, Sheet, Field, TextInput } from "@/components/ui";
 import { MoneyAmount } from "@/components/MoneyAmount";
 import { EmptyState } from "@/components/EmptyState";
+import { HelpTip } from "@/components/HelpTip";
 import { parseMajorToMinor, minorToMajor } from "@/lib/money";
 import { formatDateLabel } from "@/lib/period";
 import type { Debt, DebtStrategy } from "@/domain/types";
@@ -15,12 +16,15 @@ import type { Debt, DebtStrategy } from "@/domain/types";
  * "Record payment" logs money against a debt (the balance stays yours to update).
  */
 export function DebtView() {
-  const { debts, settings, derived, repo } = useData();
+  const { debts, settings, derived, repo, recurringRules } = useData();
   const { symbol, locale } = useCurrency();
   const { openDebtPayment } = useCapture();
   const [editing, setEditing] = useState<Debt | "new" | null>(null);
+  const editingHasBill =
+    editing && editing !== "new" && recurringRules.some((r) => r.debtId === editing.id && !r.archived);
 
   const plan = derived.debtPlan;
+  const totalOwed = Object.values(derived.debtBalances).reduce((s, v) => s + v, 0);
   const byId = new Map(debts.map((d) => [d.id, d]));
   const orderedDebts = plan.debts.map((p) => byId.get(p.debtId)).filter((d): d is Debt => !!d);
 
@@ -42,6 +46,20 @@ export function DebtView() {
         />
       ) : (
         <>
+          {/* Hero (§7.2): still owed now (FD-6.1) + debt-free date + total interest. */}
+          <Card>
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-semibold uppercase tracking-widest text-gold">Still owed</div>
+              <HelpTip topic="stillOwed" />
+            </div>
+            <MoneyAmount amount={totalOwed} size="hero" tone={totalOwed > 0 ? "default" : "positive"} className="mt-2 block" />
+            <p className="mt-2 text-sm text-muted">
+              {plan.debtFreeDate ? <>Debt-free by {formatDateLabel(plan.debtFreeDate, locale)}</> : "Not cleared at this payment yet"}
+              {" · "}
+              <MoneyAmount amount={plan.totalInterest} size="sm" tone="attention" /> interest along the way
+            </p>
+          </Card>
+
           {/* Plan controls + summary */}
           <Card>
             <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-2">Your plan</div>
@@ -96,7 +114,7 @@ export function DebtView() {
                         <h3 className="font-display text-xl text-ink truncate">{d.name}</h3>
                       </div>
                       <div className="text-sm text-muted mt-0.5">
-                        <MoneyAmount amount={d.currentBalance} size="sm" /> · {d.annualInterestRate}%/yr · min{" "}
+                        <MoneyAmount amount={derived.debtBalances[d.id] ?? d.currentBalance} size="sm" /> still owed · {d.annualInterestRate}%/yr · min{" "}
                         {formatShort(d.minimumPayment, symbol, locale)}/mo
                       </div>
                     </div>
@@ -128,10 +146,16 @@ export function DebtView() {
       {editing && (
         <DebtSheet
           debt={editing === "new" ? null : editing}
+          initialOnCalendar={!!editingHasBill}
           onClose={() => setEditing(null)}
-          onSave={async (data) => {
-            if (editing === "new") await repo.createDebt(data);
-            else await repo.updateDebt(editing.id, data);
+          onSave={async (data, bill) => {
+            let saved: Debt;
+            if (editing === "new") saved = await repo.createDebt(data);
+            else {
+              await repo.updateDebt((editing as Debt).id, data);
+              saved = { ...(editing as Debt), ...data };
+            }
+            await repo.syncDebtMinimumBill(saved, { onCalendar: bill.onCalendar, dayOfMonth: bill.dayOfMonth });
             setEditing(null);
           }}
           onArchive={
@@ -185,19 +209,23 @@ type DebtDraft = Omit<Debt, "id" | "createdAt" | "updatedAt" | "archived" | "pai
 
 function DebtSheet({
   debt,
+  initialOnCalendar = false,
   onClose,
   onSave,
   onArchive,
 }: {
   debt: Debt | null;
+  initialOnCalendar?: boolean;
   onClose: () => void;
-  onSave: (data: DebtDraft) => void | Promise<void>;
+  onSave: (data: DebtDraft, bill: { onCalendar: boolean; dayOfMonth: number }) => void | Promise<void>;
   onArchive?: () => void | Promise<void>;
 }) {
   const [name, setName] = useState(debt?.name ?? "");
   const [balance, setBalance] = useState(debt ? String(minorToMajor(debt.currentBalance)) : "");
   const [rate, setRate] = useState(debt ? String(debt.annualInterestRate) : "");
   const [minimum, setMinimum] = useState(debt ? String(minorToMajor(debt.minimumPayment)) : "");
+  const [onCalendar, setOnCalendar] = useState(initialOnCalendar);
+  const [day, setDay] = useState(String(new Date().getDate()));
   const [error, setError] = useState("");
 
   function save() {
@@ -206,13 +234,15 @@ function DebtSheet({
     const minimumPayment = parseMajorToMinor(minimum) ?? 0;
     const annualInterestRate = Number(rate);
     if (!Number.isFinite(annualInterestRate) || annualInterestRate < 0) return setError("Enter a yearly rate, e.g. 24.");
-    onSave({
-      name: name.trim() || "Untitled debt",
-      currentBalance,
-      annualInterestRate,
-      minimumPayment,
-      balanceAsOf: debt?.balanceAsOf ?? new Date().toISOString().slice(0, 10),
-    });
+    // FD-6.1/D1: editing the amount owed re-anchors the balance to today.
+    const today = new Date().toISOString().slice(0, 10);
+    const balanceChanged = !debt || currentBalance !== debt.currentBalance;
+    const balanceAsOf = balanceChanged ? today : debt.balanceAsOf;
+    const dayOfMonth = Math.min(Math.max(Number(day) || new Date().getDate(), 1), 28);
+    onSave(
+      { name: name.trim() || "Untitled debt", currentBalance, annualInterestRate, minimumPayment, balanceAsOf },
+      { onCalendar, dayOfMonth },
+    );
   }
 
   return (
@@ -232,6 +262,16 @@ function DebtSheet({
             <TextInput inputMode="decimal" value={minimum} onChange={(e) => setMinimum(e.target.value)} placeholder="0" />
           </Field>
         </div>
+
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" checked={onCalendar} onChange={(e) => setOnCalendar(e.target.checked)} className="h-4 w-4 accent-gold" />
+          <span className="text-sm text-ink">Put the minimum payment on my calendar</span>
+        </label>
+        {onCalendar && (
+          <Field label="Day of the month">
+            <TextInput inputMode="numeric" value={day} onChange={(e) => setDay(e.target.value)} placeholder="1–28" />
+          </Field>
+        )}
 
         {error && <p className="text-sm text-attention">{error}</p>}
 

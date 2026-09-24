@@ -61,6 +61,10 @@ export interface Settings extends BaseRecord {
   // Optional + read with a "none" default, so existing settings rows are valid
   // without a migration (non-destructive).
   wallpaper?: WallpaperId;
+  // Phase 6 (additive, optional; read with defaults — no migration): make it yours.
+  displayName?: string; // greeting name; none → "Good evening"
+  plannerTitle?: string; // sidebar/header title; default "All-in-One Personal Finance"
+  bigNumberLabel?: "safeToSpend" | "leftToSpend" | "okToSpend"; // wording only; default "safeToSpend"
 }
 
 export type AccountType =

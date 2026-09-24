@@ -11,10 +11,26 @@
  * the balance grows by interest and shrinks by the payment; steps by whole
  * months (EOMONTH). Snowball/avalanche direct a pooled extra payment.
  */
-import type { Debt, DebtStrategy, IsoDate, Minor } from "@/domain/types";
+import type { Debt, DebtStrategy, IsoDate, Minor, Transaction } from "@/domain/types";
 
 /** Safety bound so a debt whose minimum can't cover interest never loops forever. */
 export const PAYOFF_CAP_MONTHS = 600;
+
+/**
+ * The debt's balance right now (FD-6.1/D1): the typed balance minus every linked
+ * payment (out transaction with this debtId) dated strictly AFTER `balanceAsOf`.
+ * Never below 0. Callers map debts to `{ ...d, currentBalance: debtBalanceNow(...) }`
+ * before the pure payoff/net-worth engines, which stay unchanged.
+ */
+export function debtBalanceNow(debt: Debt, transactions: Transaction[]): Minor {
+  let paid = 0;
+  for (const t of transactions) {
+    if (t.debtId === debt.id && t.direction === "out" && t.date > debt.balanceAsOf) {
+      paid += t.amount;
+    }
+  }
+  return Math.max(0, debt.currentBalance - paid);
+}
 
 export interface DebtPlanInput {
   strategy: DebtStrategy;

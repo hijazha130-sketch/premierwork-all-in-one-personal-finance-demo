@@ -5,6 +5,7 @@ import { Button, Field, SelectInput, Sheet, Segmented, TextInput } from "@/compo
 import { parseMajorToMinor, minorToMajor } from "@/lib/money";
 import { validateAmount, validateDate } from "@/lib/validation";
 import { todayIso } from "@/lib/period";
+import { DEMO_SPEND_LIMIT, SHOP_URL, demoLimitReached } from "@/lib/edition";
 import type { TransactionType } from "@/domain/types";
 
 /**
@@ -14,7 +15,7 @@ import type { TransactionType } from "@/domain/types";
  * an existing transaction (edit or delete).
  */
 export function QuickCapture() {
-  const { open, mode, editingId, confirm, link, close } = useCapture();
+  const { open, mode, editingId, confirm, link, prefill, close } = useCapture();
   const { repo, accounts, categories, people, transactions } = useData();
 
   const editing = useMemo(
@@ -72,8 +73,10 @@ export function QuickCapture() {
       setShowNote(!!editing.note);
     } else {
       setType(mode);
-      setAmountText("");
-      setCategoryId((mode === "income" ? incomeCategories[0] : expenseCategories[0])?.id ?? "");
+      // Phase 6 quick-log (§5.6): a preset amount / recent shortcut can prefill.
+      setAmountText(prefill?.amount != null ? String(minorToMajor(prefill.amount)) : "");
+      const fallbackCat = (mode === "income" ? incomeCategories[0] : expenseCategories[0])?.id ?? "";
+      setCategoryId(prefill?.categoryId ?? fallbackCat);
       setAccountId(accounts[0]?.id ?? "");
       setToAccountId(accounts[1]?.id ?? accounts[0]?.id ?? "");
       setPersonId("");
@@ -83,7 +86,7 @@ export function QuickCapture() {
     }
     setError("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, editingId, mode, confirm, link]);
+  }, [open, editingId, mode, confirm, link, prefill]);
 
   const isTransfer = type === "transfer";
 
@@ -194,6 +197,12 @@ export function QuickCapture() {
 
   const activeCategories = type === "income" ? incomeCategories : expenseCategories;
 
+  // Demo edition gentle limit (§6.3): once 40 spends are written, adding a NEW
+  // spend shows one calm line. Everything already written stays readable and
+  // editable, and money in / moving money are never blocked.
+  const blockedByDemo =
+    demoLimitReached(transactions) && !editing && !confirm && !link && type === "expense";
+
   return (
     <Sheet open={open} onClose={close} title={title}>
       {accounts.length === 0 ? (
@@ -219,6 +228,25 @@ export function QuickCapture() {
             />
           )}
 
+          {blockedByDemo ? (
+            <div className="space-y-3">
+              <p className="text-ink">
+                The free demo holds {DEMO_SPEND_LIMIT} spends. Everything you wrote is still here — the
+                full planner keeps going.
+              </p>
+              {SHOP_URL && (
+                <a
+                  href={SHOP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex rounded-control bg-gold px-4 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px] items-center"
+                >
+                  Get the full planner
+                </a>
+              )}
+            </div>
+          ) : (
+            <>
           {/* Amount — the hero field */}
           <div>
             <label className="block text-sm font-medium text-ink mb-2">Amount</label>
@@ -327,6 +355,8 @@ export function QuickCapture() {
               </Button>
             )}
           </div>
+            </>
+          )}
         </div>
       )}
     </Sheet>

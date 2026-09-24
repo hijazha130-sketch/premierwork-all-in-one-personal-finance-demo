@@ -23,6 +23,15 @@ import type { BudgetPeriod, FiftyThirtyTwenty } from "@/domain/budget";
 import type { GoalsRollup } from "@/domain/goals";
 import type { DebtPlan } from "@/domain/debt";
 import type { NetWorth, NetWorthPoint } from "@/domain/wealth";
+import type {
+  SpendingGroups,
+  DayCell,
+  UntilPayday,
+  NextStepResult,
+  QuickAmounts,
+  Milestone,
+} from "@/domain/insights";
+import type { InOutRow } from "@/domain/monthGlance";
 import type { DateRange } from "@/lib/period";
 
 /**
@@ -51,6 +60,9 @@ export interface DataContextValue {
   budgetPeriodLines: BudgetPeriodLine[];
   budgetForPeriod: (periodKey: string) => BudgetPeriod;
   fiftyThirtyTwentyForPeriod: (periodKey: string) => FiftyThirtyTwenty;
+  // Phase 6 (§7.3): the five spending groups + the in/out list over any date range.
+  spendingForRange: (range: DateRange) => SpendingGroups;
+  inOutForRange: (range: DateRange) => InOutRow[];
   // Phase 4: goals & debts (progress/payoff are derived below).
   goals: Goal[];
   debts: Debt[];
@@ -77,6 +89,14 @@ export interface DataContextValue {
     netWorth: NetWorth;
     netWorthSeries: NetWorthPoint[];
     assetValues: Record<string, Minor>; // assetId -> current value (from valuations)
+    debtBalances: Record<string, Minor>; // debtId -> still owed now (FD-6.1)
+    // Phase 6 insights (§5.2–5.7), all current-month / current-period, derived.
+    spending: SpendingGroups; // this month's five groups + money in/out/kept
+    dayCells: DayCell[]; // this month, day by day
+    untilPayday: UntilPayday; // the pay-period strip + per-day
+    nextStep: NextStepResult; // the single next step + 3-item checklist
+    quickAmounts: QuickAmounts; // preset amounts + recent shortcuts
+    milestones: Milestone[]; // the 8 milestones
   };
 }
 

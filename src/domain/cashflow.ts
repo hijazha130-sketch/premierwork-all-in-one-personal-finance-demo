@@ -86,6 +86,11 @@ export interface SafeToSpendResult {
   reservedTotal: Minor; // Σ of the reserved commitments (for a one-line "set aside" note)
   safetyFloor: Minor; // the cushion reserved (for a breakdown; 0 when unset)
   horizonEnd: IsoDate; // the last day considered
+  // Phase 6 (§5.1): the receipt + per-day figure.
+  startingBalance: Minor; // = cleared total balance (the receipt's first line)
+  horizonKind: "payday" | "monthEnd" | "rolling";
+  daysLeft: number; // always >= 1
+  perDay: Minor; // floor(amount / daysLeft); 0 when amount <= 0
 }
 
 /**
@@ -108,7 +113,7 @@ export function safeToSpend(
   config: SafeToSpendConfig = { mode: "endOfMonth" },
 ): SafeToSpendResult {
   const balance = totalBalance(accounts, transactions);
-  const horizonEnd = resolveHorizonEnd(occurrences, today, config);
+  const { end: horizonEnd, kind: horizonKind } = resolveHorizon(occurrences, today, config);
 
   const unpaid = occurrences.filter(isUnpaid);
   const reserved = unpaid
@@ -124,25 +129,45 @@ export function safeToSpend(
     amount = addMinor(amount, sumMinor(expectedIn.map((o) => o.amount)));
   }
 
-  return { amount, reserved, reservedTotal, safetyFloor, horizonEnd };
+  // §5.1 days left: to the day BEFORE payday; inclusive of the last day for month end.
+  const daysLeft =
+    horizonKind === "payday"
+      ? Math.max(1, daysBetween(today, horizonEnd))
+      : daysBetween(today, horizonEnd) + 1;
+  const perDay = amount <= 0 ? 0 : Math.floor(amount / daysLeft);
+
+  return { amount, reserved, reservedTotal, safetyFloor, horizonEnd, startingBalance: balance, horizonKind, daysLeft, perDay };
 }
 
-/** Resolve the horizon's last day from the chosen mode (FD-1). */
-function resolveHorizonEnd(occurrences: Occurrence[], today: IsoDate, config: SafeToSpendConfig): IsoDate {
+/** Resolve the horizon's last day + kind from the chosen mode (FD-1). */
+function resolveHorizon(
+  occurrences: Occurrence[],
+  today: IsoDate,
+  config: SafeToSpendConfig,
+): { end: IsoDate; kind: SafeToSpendResult["horizonKind"] } {
   switch (config.mode) {
     case "rollingDays":
-      return addDaysIso(today, config.rollingDays ?? 30);
+      return { end: addDaysIso(today, config.rollingDays ?? 30), kind: "rolling" };
     case "nextIncome": {
       const incomes = occurrences
         .filter((o) => o.status === "upcoming" && o.direction === "in" && o.date >= today)
         .map((o) => o.date)
         .sort();
-      return incomes[0] ?? endOfMonthIso(today); // fall back to month end if none
+      return incomes[0]
+        ? { end: incomes[0], kind: "payday" }
+        : { end: endOfMonthIso(today), kind: "monthEnd" }; // fall back to month end
     }
     case "endOfMonth":
     default:
-      return endOfMonthIso(today);
+      return { end: endOfMonthIso(today), kind: "monthEnd" };
   }
+}
+
+/** Whole days from `a` to `b` (b − a), by UTC day. Negative if b is before a. */
+export function daysBetween(a: IsoDate, b: IsoDate): number {
+  const [ay, am, ad] = parseIso(a);
+  const [by, bm, bd] = parseIso(b);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
 }
 
 // --- Local date helpers (UTC, day-precision; ISO strings compare lexically) --

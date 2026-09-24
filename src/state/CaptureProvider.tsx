@@ -1,8 +1,14 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import type { Debt, Goal, RecurringRule } from "@/domain/types";
+import type { Debt, Goal, Minor, RecurringRule } from "@/domain/types";
 import type { Occurrence } from "@/domain/occurrences";
 
 type CaptureMode = "expense" | "income" | "transfer";
+
+/** Optional starting values for a new spend (Phase 6 quick-log, §5.6). */
+export interface CapturePrefill {
+  amount?: Minor;
+  categoryId?: string;
+}
 
 /** Confirming a planned bill/income into a real transaction ("Mark as paid"). */
 export interface ConfirmPayload {
@@ -24,7 +30,8 @@ interface CaptureContextValue {
   editingId: string | null;
   confirm: ConfirmPayload | null;
   link: LinkPayload | null;
-  openCapture: (mode?: CaptureMode) => void;
+  prefill: CapturePrefill | null;
+  openCapture: (mode?: CaptureMode, prefill?: CapturePrefill) => void;
   openEditor: (id: string) => void;
   openConfirm: (rule: RecurringRule, occurrence: Occurrence) => void;
   openContribution: (goal: Goal) => void;
@@ -40,18 +47,21 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmPayload | null>(null);
   const [link, setLink] = useState<LinkPayload | null>(null);
+  const [prefill, setPrefill] = useState<CapturePrefill | null>(null);
 
-  const openCapture = (m: CaptureMode = "expense") => {
+  const openCapture = (m: CaptureMode = "expense", pf?: CapturePrefill) => {
     setMode(m);
     setEditingId(null);
     setConfirm(null);
     setLink(null);
+    setPrefill(pf ?? null);
     setOpen(true);
   };
   const openEditor = (id: string) => {
     setEditingId(id);
     setConfirm(null);
     setLink(null);
+    setPrefill(null);
     setOpen(true);
   };
   const openConfirm = (rule: RecurringRule, occurrence: Occurrence) => {
@@ -78,11 +88,12 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
     setOpen(false);
     setConfirm(null);
     setLink(null);
+    setPrefill(null);
   };
 
   return (
     <CaptureContext.Provider
-      value={{ open, mode, editingId, confirm, link, openCapture, openEditor, openConfirm, openContribution, openDebtPayment, close }}
+      value={{ open, mode, editingId, confirm, link, prefill, openCapture, openEditor, openConfirm, openContribution, openDebtPayment, close }}
     >
       {children}
     </CaptureContext.Provider>

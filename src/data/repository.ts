@@ -88,7 +88,7 @@ export class FinanceRepository {
       locale: "en-PK",
       schemaVersion: 5,
       setupComplete: false,
-      safeToSpendHorizon: "endOfMonth",
+      safeToSpendHorizon: "nextIncome", // FD-6.2/D2: new files run to payday (falls back to month end)
       safetyFloor: 0,
       debtStrategy: "avalanche",
       debtMonthlyExtra: 0,
@@ -492,6 +492,11 @@ export class FinanceRepository {
       cleared: opts?.cleared ?? true,
       recurringRuleId: rule.id,
       occurrenceDate, // the scheduled date it fulfills (matches even if paid early/late)
+      // FD-6.1/D1: carry the rule's planner links so marking a linked bill paid
+      // actually reaches the debt/goal/investment (previously dropped).
+      goalId: rule.goalId,
+      debtId: rule.debtId,
+      investmentId: rule.investmentId,
     });
   }
 
@@ -651,13 +656,67 @@ export class FinanceRepository {
     const existing = await this.db.debts.get(id);
     if (!existing) throw new IntegrityError("That debt no longer exists.");
     await this.db.debts.update(id, { ...patch, updatedAt: Date.now() });
+    // Keep a "minimum on my calendar" rule's amount in sync with the minimum.
+    if (patch.minimumPayment != null) {
+      const bill = await this.getDebtMinimumBill(id);
+      if (bill && bill.amount !== patch.minimumPayment) {
+        await this.updateRecurringRule(bill.id, { amount: patch.minimumPayment });
+      }
+    }
   }
 
   async archiveDebt(id: string): Promise<void> {
+    const bill = await this.getDebtMinimumBill(id); // archiving the debt archives its bill
+    if (bill) await this.archiveRecurringRule(bill.id);
     await this.updateDebt(id, { archived: true });
   }
   async restoreDebt(id: string): Promise<void> {
     await this.updateDebt(id, { archived: false });
+  }
+
+  /** The active recurring rule that pays this debt's minimum (if any). */
+  async getDebtMinimumBill(debtId: string): Promise<RecurringRule | undefined> {
+    const rules = await this.db.recurringRules.filter((r) => r.debtId === debtId && !r.archived).toArray();
+    return rules[0];
+  }
+
+  /**
+   * "Put the minimum payment on my calendar" (§4 debt form). onCalendar true →
+   * create the linked monthly bill (or update its amount); false → archive it.
+   * Because the bill carries debtId and createTransactionFromOccurrence now copies
+   * it, marking the bill paid lowers the debt (FD-6.1).
+   */
+  async syncDebtMinimumBill(
+    debt: Debt,
+    opts: { onCalendar: boolean; accountId?: string; dayOfMonth?: number },
+  ): Promise<void> {
+    const existing = await this.getDebtMinimumBill(debt.id);
+    if (!opts.onCalendar) {
+      if (existing) await this.archiveRecurringRule(existing.id);
+      return;
+    }
+    if (existing) {
+      if (existing.amount !== debt.minimumPayment) await this.updateRecurringRule(existing.id, { amount: debt.minimumPayment });
+      return;
+    }
+    const accountId = opts.accountId ?? (await this.listAccounts())[0]?.id;
+    if (!accountId) return; // no account to pay from — skip quietly
+    const now = new Date();
+    const day = Math.min(Math.max(opts.dayOfMonth ?? now.getDate(), 1), 28);
+    const anchor = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    await this.createRecurringRule({
+      name: `${debt.name} — minimum`,
+      amount: debt.minimumPayment,
+      direction: "out",
+      type: "expense",
+      categoryId: null,
+      accountId,
+      personId: null,
+      frequency: "everyMonth",
+      anchorDate: anchor,
+      endDate: null,
+      debtId: debt.id,
+    });
   }
 
   /** True when any transaction is a payment toward this debt. */

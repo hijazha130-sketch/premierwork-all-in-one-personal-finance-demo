@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useData, useCurrency } from "@/state/dataContext";
 import { Card, SectionTitle, Segmented } from "@/components/ui";
 import { MoneyAmount } from "@/components/MoneyAmount";
@@ -6,14 +7,16 @@ import { EmptyState } from "@/components/EmptyState";
 import { FiftyThirtyTwentyView } from "@/screens/FiftyThirtyTwenty";
 import { GoalsView } from "@/screens/GoalsView";
 import { DebtView } from "@/screens/DebtView";
+import { MonthGlance } from "@/screens/MonthGlance";
 import { minorToMajor, parseMajorToMinor } from "@/lib/money";
 import { currentMonth, monthLabel } from "@/lib/period";
 import type { BudgetLine } from "@/domain/budget";
 
-type PlanView = "budget" | "split" | "goals" | "debt";
+type PlanView = "budget" | "month" | "split" | "goals" | "debt";
 
 const SUBTITLES: Record<PlanView, string> = {
   budget: "What you meant to spend, next to what you actually did — for each group, this month.",
+  month: "Your money in and out over a month, three months, six, or the year so far.",
   split: "How your spending splits across needs, wants and savings.",
   goals: "What you're saving toward, and how close you are.",
   debt: "What you're paying off, when you'll be debt-free, and the interest along the way.",
@@ -24,8 +27,13 @@ const SUBTITLES: Record<PlanView, string> = {
  * 50/30/20 lens, Goals and Debt. Everything shown is read from derived state;
  * the screen does no money math itself.
  */
+const PLAN_VIEWS: PlanView[] = ["budget", "month", "split", "goals", "debt"];
+
 export function Plan() {
-  const [view, setView] = useState<PlanView>("budget");
+  const [params] = useSearchParams();
+  const requested = params.get("view");
+  const initialView = PLAN_VIEWS.includes(requested as PlanView) ? (requested as PlanView) : "budget";
+  const [view, setView] = useState<PlanView>(initialView);
   return (
     <div className="space-y-8">
       <SectionTitle overline="Plan" title="Your plan" subtitle={SUBTITLES[view]} />
@@ -35,12 +43,14 @@ export function Plan() {
         onChange={setView}
         options={[
           { value: "budget", label: "Budget" },
+          { value: "month", label: "Month" },
           { value: "split", label: "50/30/20" },
           { value: "goals", label: "Goals" },
           { value: "debt", label: "Debt" },
         ]}
       />
       {view === "budget" && <BudgetView />}
+      {view === "month" && <MonthGlance />}
       {view === "split" && <FiftyThirtyTwentyView />}
       {view === "goals" && <GoalsView />}
       {view === "debt" && <DebtView />}
