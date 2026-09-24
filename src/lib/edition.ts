@@ -69,8 +69,19 @@ export function startScreenPath(start: string | null | undefined): string | null
  * hash query, so `…/?start=x`, `…/#/?start=x` and `…/#/plan?view=month` all work
  * regardless of which router (Browser vs Hash) is running. Query wins over hash.
  */
-export function readDoorParams(): { start: string | null; currency: string | null; view: string | null } {
-  const out: { start: string | null; currency: string | null; view: string | null } = { start: null, currency: null, view: null };
+interface DoorParams {
+  start: string | null;
+  currency: string | null;
+  view: string | null;
+}
+let doorCache: DoorParams | null = null;
+
+export function readDoorParams(): DoorParams {
+  // Snapshot ONCE from the original URL: the deep-link handler navigates on
+  // mount, which rewrites the hash and would otherwise drop currency=/view=
+  // before the async boot reads them. First caller (StartHandler) captures them.
+  if (doorCache) return doorCache;
+  const out: DoorParams = { start: null, currency: null, view: null };
   const grab = (qs: string) => {
     if (!qs) return;
     const p = new URLSearchParams(qs);
@@ -86,5 +97,6 @@ export function readDoorParams(): { start: string | null; currency: string | nul
   } catch {
     /* SSR / no window — return empty */
   }
+  doorCache = out;
   return out;
 }
