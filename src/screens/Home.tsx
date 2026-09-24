@@ -305,14 +305,15 @@ export function Home() {
           </p>
           <div className="divide-y divide-hairline">
             {overdue.map((o, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-ink font-medium">{nameOf(o)}</span>
-                  <span className="block text-xs text-attention">was due {shortDate(o.displayDate, locale)}</span>
-                </span>
-                <MoneyAmount amount={o.amount} size="sm" tone={o.direction === "in" ? "positive" : "attention"} />
-                <OccurrenceActions occurrence={o} />
-              </div>
+              <OccurrenceRow
+                key={i}
+                name={nameOf(o)}
+                sub={`was due ${shortDate(o.displayDate, locale)}`}
+                subTone="text-attention"
+                amount={o.amount}
+                amountTone={o.direction === "in" ? "positive" : "attention"}
+                occurrence={o}
+              />
             ))}
           </div>
         </Card>
@@ -329,14 +330,15 @@ export function Home() {
           </div>
           <div className="divide-y divide-hairline">
             {upcoming.map((o, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-ink font-medium">{nameOf(o)}</span>
-                  <span className="block text-xs text-muted">Coming up · {shortDate(o.displayDate, locale)}</span>
-                </span>
-                <MoneyAmount amount={o.amount} size="sm" tone={o.direction === "in" ? "positive" : "default"} />
-                <OccurrenceActions occurrence={o} />
-              </div>
+              <OccurrenceRow
+                key={i}
+                name={nameOf(o)}
+                sub={`Coming up · ${shortDate(o.displayDate, locale)}`}
+                subTone="text-muted"
+                amount={o.amount}
+                amountTone={o.direction === "in" ? "positive" : "default"}
+                occurrence={o}
+              />
             ))}
           </div>
         </Card>
@@ -364,35 +366,71 @@ export function Home() {
   );
 }
 
+/** A planned/overdue bill or income row: name+date, then amount + actions —
+ *  stacks cleanly on mobile so nothing overlaps, single line on desktop. */
+function OccurrenceRow({
+  name,
+  sub,
+  subTone,
+  amount,
+  amountTone,
+  occurrence,
+}: {
+  name: string;
+  sub: string;
+  subTone: string;
+  amount: number;
+  amountTone: "positive" | "attention" | "default";
+  occurrence: Occurrence;
+}) {
+  return (
+    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4">
+      <span className="min-w-0 sm:flex-1">
+        <span className="block truncate font-medium text-ink">{name}</span>
+        <span className={`block text-xs ${subTone}`}>{sub}</span>
+      </span>
+      <div className="flex items-center justify-between gap-3 sm:justify-end">
+        <MoneyAmount amount={amount} size="sm" tone={amountTone} />
+        <OccurrenceActions occurrence={occurrence} />
+      </div>
+    </div>
+  );
+}
+
 /** The dark next-step bar (§7.1 #2). */
 function NextStepBar({ next, onLog }: { next: NextStepResult; onLog: () => void }) {
   const step = next.nextStep;
   return (
     <div className="rounded-card bg-hero px-5 py-4 text-hero-text">
-      <div className="flex flex-wrap items-center gap-4">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-hero-text/10 font-display text-lg">
-          {step.id ? "1" : "✓"}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="text-xs font-semibold uppercase tracking-widest text-hero-text/60">Your next step</div>
-          <div className="text-hero-text">{step.text}</div>
+      {/* Stacks on mobile so the sentence keeps full width; inline on desktop. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex min-w-0 flex-1 items-start gap-4">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-hero-text/10 font-display text-lg">
+            {step.id ? "1" : "✓"}
+          </span>
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-widest text-hero-text/60">Your next step</div>
+            <div className="text-hero-text">{step.text}</div>
+          </div>
         </div>
-        {step.estimate && (
-          <span className="rounded-pill bg-hero-text/10 px-3 py-1 text-xs text-hero-text/80">{step.estimate}</span>
-        )}
-        {step.action === "log" && (
-          <button onClick={onLog} className="rounded-control bg-gold px-4 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px]">
-            Log a spend
-          </button>
-        )}
-        {step.action && step.action !== "log" && (
-          <Link
-            to={step.action === "money" ? "/money" : step.action === "accounts" ? "/accounts" : "/money"}
-            className="rounded-control bg-gold px-4 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px] inline-flex items-center"
-          >
-            Take a look
-          </Link>
-        )}
+        <div className="flex shrink-0 flex-wrap items-center gap-3 pl-[52px] sm:pl-0">
+          {step.estimate && (
+            <span className="rounded-pill bg-hero-text/10 px-3 py-1 text-xs text-hero-text/80">{step.estimate}</span>
+          )}
+          {step.action === "log" && (
+            <button onClick={onLog} className="rounded-control bg-gold px-4 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px]">
+              Log a spend
+            </button>
+          )}
+          {step.action && step.action !== "log" && (
+            <Link
+              to={step.action === "money" ? "/money" : step.action === "accounts" ? "/accounts" : "/money"}
+              className="rounded-control bg-gold px-4 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px] inline-flex items-center"
+            >
+              Take a look
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

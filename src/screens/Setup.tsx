@@ -229,15 +229,25 @@ export function Setup() {
 
         {step === 3 && (
           <StepShell title="How your money is grouped" blurb="We've filled in sensible groups. Keep the ones you want — you can edit all of these later.">
+            <p className="mb-3 text-sm text-muted">Tap to keep or drop a group. A check means it's kept.</p>
             <div className="flex flex-wrap gap-2">
               {groups.map((g, i) => (
                 <button
                   key={g.name}
+                  aria-pressed={g.on}
                   onClick={() => setGroups(upd(groups, i, { on: !g.on }))}
-                  className={`inline-flex items-center gap-2 rounded-pill border px-3 py-2 text-sm ${
-                    g.on ? "border-gold text-ink bg-gold/10" : "border-hairline text-muted"
+                  className={`inline-flex items-center gap-2 rounded-pill border px-3 py-2 text-sm min-h-[40px] ${
+                    g.on ? "border-gold text-ink bg-gold/10" : "border-hairline text-muted opacity-70"
                   }`}
                 >
+                  <span
+                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] ${
+                      g.on ? "bg-gold text-base" : "border border-hairline text-transparent"
+                    }`}
+                    aria-hidden
+                  >
+                    ✓
+                  </span>
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: g.color }} aria-hidden />
                   {g.name}
                 </button>
