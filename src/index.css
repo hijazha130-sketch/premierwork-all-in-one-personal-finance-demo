@@ -19,8 +19,8 @@
     --text-primary: 247 239 225; /* #F7EFE1 */
     --text-muted: 184 169 136; /* #B8A988 */
     --accent-gold: 201 160 92; /* #C9A05C */
-    --positive: 127 168 138; /* #7FA88A muted sage */
-    --attention: 201 138 91; /* #C98A5B muted amber */
+    --positive: 147 192 162; /* #93C0A2 sage — brightened for readable amounts on tiles */
+    --attention: 224 164 114; /* #E0A472 amber — brightened for readable amounts on tiles */
     --border-hairline: 58 47 34; /* #3A2F22 */
     --hero: 26 22 17; /* #1A1611 */
     --hero-text: 247 239 225; /* #F7EFE1 */
@@ -47,8 +47,8 @@
     --text-primary: 32 24 8; /* #201808 */
     --text-muted: 107 93 72; /* #6B5D48 */
     --accent-gold: 201 160 92; /* #C9A05C */
-    --positive: 78 122 92; /* #4E7A5C */
-    --attention: 176 110 59; /* #B06E3B */
+    --positive: 53 96 64; /* #356040 — deepened for readable amounts on tiles (was #4E7A5C) */
+    --attention: 143 78 31; /* #8F4E1F — deepened for readable amounts on tiles (was #B06E3B) */
     --border-hairline: 234 223 199; /* #EADFC7 */
     --hero: 36 28 18; /* #241C12 dark ink card on cream */
     --hero-text: 247 239 225; /* #F7EFE1 */
