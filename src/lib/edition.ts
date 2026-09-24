@@ -51,11 +51,40 @@ export function startScreenPath(start: string | null | undefined): string | null
       return "/plan?view=debt";
     case "goals":
       return "/plan?view=goals";
+    case "month":
+      return "/plan?view=month";
     case "wealth":
       return "/grow";
     case "plan":
       return "/plan";
+    case "milestones":
+      return "/milestones";
     default:
       return null;
   }
+}
+
+/**
+ * Door-link params (Batch 7 §B6). Read from BOTH the real query string and the
+ * hash query, so `…/?start=x`, `…/#/?start=x` and `…/#/plan?view=month` all work
+ * regardless of which router (Browser vs Hash) is running. Query wins over hash.
+ */
+export function readDoorParams(): { start: string | null; currency: string | null; view: string | null } {
+  const out: { start: string | null; currency: string | null; view: string | null } = { start: null, currency: null, view: null };
+  const grab = (qs: string) => {
+    if (!qs) return;
+    const p = new URLSearchParams(qs);
+    out.start = out.start ?? p.get("start");
+    out.currency = out.currency ?? p.get("currency");
+    out.view = out.view ?? p.get("view");
+  };
+  try {
+    grab(window.location.search.replace(/^\?/, ""));
+    const hash = window.location.hash || "";
+    const q = hash.indexOf("?");
+    if (q >= 0) grab(hash.slice(q + 1));
+  } catch {
+    /* SSR / no window — return empty */
+  }
+  return out;
 }

@@ -7,6 +7,7 @@ import { applyWallpaper } from "@/lib/wallpapers";
 import { Segmented } from "@/components/ui";
 import { QuickCapture } from "@/screens/QuickCapture";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
+import { CurrencyPicker } from "@/components/CurrencyPicker";
 
 /**
  * The persistent application shell (Section 2 & 5): brand + context header, a
@@ -65,7 +66,8 @@ export function AppShell() {
             <div className="md:hidden">
               <Brand compact />
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
+              <CurrencyPicker />
               <Segmented
                 ariaLabel="Theme"
                 value={theme}
@@ -79,7 +81,7 @@ export function AppShell() {
           </header>
 
           {/* Generous, wide content wrapper — never squeezed into a narrow column. */}
-          <main className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 md:px-16 py-6 md:py-8 pb-32 md:pb-16">
+          <main className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 md:px-16 py-6 md:py-8 pb-40 md:pb-16">
             <WelcomeBanner />
             <Outlet />
           </main>

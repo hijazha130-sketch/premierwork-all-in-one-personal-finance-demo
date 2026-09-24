@@ -56,7 +56,7 @@ export function DebtView() {
             <p className="mt-2 text-sm text-muted">
               {plan.debtFreeDate ? <>Debt-free by {formatDateLabel(plan.debtFreeDate, locale)}</> : "Not cleared at this payment yet"}
               {" · "}
-              <MoneyAmount amount={plan.totalInterest} size="sm" tone="attention" /> interest along the way
+              <MoneyAmount amount={plan.totalInterest} size="sm" tone="attention" whole /> interest along the way
             </p>
           </Card>
 
@@ -90,7 +90,7 @@ export function DebtView() {
               </div>
               <div>
                 <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-1">Interest you'll pay</div>
-                <MoneyAmount amount={plan.totalInterest} size="md" tone="attention" />
+                <MoneyAmount amount={plan.totalInterest} size="md" tone="attention" whole />
               </div>
             </div>
 

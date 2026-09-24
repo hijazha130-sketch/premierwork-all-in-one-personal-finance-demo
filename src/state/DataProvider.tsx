@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDB } from "@/data/db";
-import { loadDemoData } from "@/data/demo";
-import { isDemo } from "@/lib/edition";
+import { loadDemoData, hasDemoData, reloadDemoDataInCurrency } from "@/data/demo";
+import { isDemo, readDoorParams } from "@/lib/edition";
+import { getCurrency, isSupportedCurrency } from "@/domain/currencies";
 import { FinanceRepository } from "@/data/repository";
 import { balancesByAccount, totalBalance } from "@/domain/balance";
 import { moneyIn, moneyOut } from "@/domain/aggregation";
@@ -50,8 +51,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ]);
       const emptyFile = nAcc === 0 && nTx === 0 && nSet === 0;
       if (isDemo || emptyFile) await loadDemoData(db, todayIso());
+
+      // Door link `currency=XXX` wins on first load (§B6): set the display
+      // currency and re-scale any example records to it. Own records untouched.
+      const door = readDoorParams();
+      if (door.currency && isSupportedCurrency(door.currency)) {
+        const c = getCurrency(door.currency);
+        const s = await repo.getSettings();
+        if (s && s.currencyCode !== c.code) {
+          await repo.saveSettings({ currencyCode: c.code, currencySymbol: c.symbol, locale: c.locale });
+          if (await hasDemoData(db)) await reloadDemoDataInCurrency(db, todayIso(), c.code);
+        }
+      }
     })();
-  }, [db]);
+  }, [db, repo]);
 
   const settings = useLiveQuery(() => repo.getSettings(), []);
   const accounts = useLiveQuery(() => repo.listAccounts(), []);

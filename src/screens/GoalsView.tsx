@@ -55,7 +55,7 @@ export function GoalsView() {
             <MoneyAmount amount={derived.goalsProgress.totalSaved} size="hero" tone="default" className="mt-2 block" />
             <p className="mt-2 text-sm text-muted">
               <MoneyAmount amount={derived.goalsProgress.totalRemaining} size="sm" tone="muted" /> still to find
-              {nearestDate && <> · nearest date {formatDateLabel(nearestDate, locale)}</>}
+              {nearestDate && <> · nearest target date {formatDateLabel(nearestDate, locale)}</>}
             </p>
           </Card>
 

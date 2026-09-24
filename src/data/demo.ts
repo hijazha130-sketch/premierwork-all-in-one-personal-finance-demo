@@ -1,19 +1,25 @@
 /**
- * Example data + demo edition (Architecture §6). Every seeded record id starts
- * with `demo-`, so clearing is exact and can never touch a real record. Dates are
- * relative to the injected `today`, so the app always looks alive. The builder is
- * pure and deterministic; load is idempotent; clear removes exactly the demo ids.
+ * Example data + demo edition (Architecture §6, Batch 7 §A4). Every seeded record
+ * id starts with `demo-`, so clearing is exact and can never touch a real record.
+ * Dates are relative to the injected `today`, so the app always looks alive.
+ *
+ * The dataset is authored ONCE as a USD base and generated for any currency via
+ * `scaleExampleMinor` (a believability scale, NOT an exchange rate). Every derived
+ * number is computed from the rounded records, so the maths stays consistent.
  *
  * Invariant kept: transactions remain the single source of truth. Balances, safe
- * to spend, goal progress, debt "still owed" and net worth are all DERIVED from
- * the seeded transactions/valuations — nothing derived is seeded.
+ * to spend, goal progress, debt "still owed" and net worth are all DERIVED —
+ * nothing derived is seeded. One real card = one liability (a Debt), never also a
+ * credit account, so Wealth and the Debt tab always agree (B3).
  */
 import type { FinanceDB } from "@/data/db";
 import { SCHEMA_VERSION } from "@/data/db";
+import { getCurrency, scaleExampleMinor, defaultCushionMinor } from "@/domain/currencies";
 import type {
   Account,
   Asset,
   AssetValuation,
+  BudgetTemplate,
   Category,
   Debt,
   Goal,
@@ -33,18 +39,14 @@ export interface DemoRecords {
   categories: Category[];
   transactions: Transaction[];
   recurringRules: RecurringRule[];
+  budgetTemplates: BudgetTemplate[];
   goals: Goal[];
   debts: Debt[];
   assets: Asset[];
   assetValuations: AssetValuation[];
 }
 
-// --- money + date helpers (pure, UTC, day-precision) ----------------------
-
-/** Major units → integer minor units (×100). All demo currencies use 2 places. */
-function rs(major: number): Minor {
-  return Math.round(major * 100);
-}
+// --- date helpers (pure, UTC, day-precision) ------------------------------
 
 function parseIso(iso: IsoDate): [number, number, number] {
   const [y, m, d] = iso.split("-").map(Number);
@@ -66,28 +68,22 @@ function firstOfMonth(base: IsoDate): IsoDate {
   return iso(y, m, 1);
 }
 
-const CURRENCY: Record<string, { symbol: string; locale: string }> = {
-  PKR: { symbol: "Rs", locale: "en-PK" },
-  INR: { symbol: "₹", locale: "en-IN" },
-  USD: { symbol: "$", locale: "en-US" },
-  GBP: { symbol: "£", locale: "en-GB" },
-  EUR: { symbol: "€", locale: "en-IE" },
-};
-
 // --- the builder ----------------------------------------------------------
 
 /**
- * Build a complete, alive set of example records anchored to `today`. Pure and
- * deterministic (timestamps are fixed) so tests can assert on it directly.
+ * Build a complete, alive set of example records anchored to `today`, in the
+ * chosen currency. Pure + deterministic (fixed timestamps) so tests can assert.
  */
-export function buildDemoRecords(today: IsoDate, currencyCode = "PKR"): DemoRecords {
-  const cur = CURRENCY[currencyCode] ?? { symbol: currencyCode, locale: "en" };
+export function buildDemoRecords(today: IsoDate, currencyCode = "USD"): DemoRecords {
+  const cur = getCurrency(currencyCode);
   const T = 0; // fixed timestamp — determinism over wall-clock
+  // USD-major → this currency's example minor units (believability scale, not a rate).
+  const m = (usdMajor: number): Minor => scaleExampleMinor(Math.round(usdMajor * 100), cur.code);
 
   const settings: Settings[] = [
     {
       id: `${DEMO}settings`,
-      currencyCode,
+      currencyCode: cur.code,
       currencySymbol: cur.symbol,
       budgetMethod: "carryOver",
       periodStartMonth: 1,
@@ -96,7 +92,7 @@ export function buildDemoRecords(today: IsoDate, currencyCode = "PKR"): DemoReco
       schemaVersion: SCHEMA_VERSION,
       setupComplete: true,
       safeToSpendHorizon: "nextIncome", // FD-6.2
-      safetyFloor: rs(20000),
+      safetyFloor: defaultCushionMinor(cur.code), // registry cushion (USD 500)
       debtStrategy: "avalanche",
       debtMonthlyExtra: 0,
       wallpaper: "none",
@@ -105,10 +101,13 @@ export function buildDemoRecords(today: IsoDate, currencyCode = "PKR"): DemoReco
     },
   ];
 
+  // No credit-card ACCOUNT (B3): the card is a Debt only, so it is one liability.
   const accounts: Account[] = [
-    a("checking", "Everyday account", "checking"),
-    a("savings", "Savings", "savings"),
-    a("card", "Credit card", "credit"),
+    a("checking", "Everyday account", "checking", 0),
+    // A modest ready buffer. NOTE: kept small on purpose — Safe to spend counts
+    // every cash account, so a large savings balance would inflate the per-day
+    // headline. Goal progress ("put away") is derived from goal terms, not this.
+    a("savings", "Savings", "savings", m(600)),
   ];
 
   const categories: Category[] = [
@@ -124,76 +123,88 @@ export function buildDemoRecords(today: IsoDate, currencyCode = "PKR"): DemoReco
     c("saving", "Savings", "savings", "savings", "#7FA88A"),
   ];
 
-  // Recurring rules — income + bills. Anchored to the 1st of THIS month so no
-  // stale past occurrences pile up as overdue; this month's are marked paid
-  // below, next month's stay upcoming (reserved in Safe to spend).
+  // Recurring rules — income + bills. Bills anchored so this month's are marked
+  // paid below and next month's stay upcoming (reserved in Safe to spend).
   const som = firstOfMonth(today);
-  const salaryDay = 1;
   const recurringRules: RecurringRule[] = [
-    rule("salary", "Monthly pay", rs(180000), "in", "everyMonth", som, "salary", { accountId: id("acc", "checking") }),
-    rule("sidegig", "Side project", rs(22000), "in", "every2Weeks", addDays(today, 5), "salary", { accountId: id("acc", "checking") }),
-    rule("rent", "Rent", rs(55000), "out", "everyMonth", som, "rent", { accountId: id("acc", "checking") }),
-    rule("phone", "Phone bill", rs(3500), "out", "everyMonth", iso(...bumpDay(som, 8)), "phone", { accountId: id("acc", "checking") }),
-    rule("internet", "Internet", rs(6000), "out", "everyMonth", iso(...bumpDay(som, 12)), "internet", { accountId: id("acc", "checking") }),
-    rule("streaming", "Streaming", rs(1500), "out", "everyMonth", iso(...bumpDay(som, 15)), "streaming", { accountId: id("acc", "checking") }),
-    // Debt minimum on the calendar (§4): linked to the debt so paying it lowers the balance.
-    rule("debtmin", "Card minimum", rs(6000), "out", "everyMonth", iso(...bumpDay(som, 5)), null, { accountId: id("acc", "checking"), debtId: id("debt", "card") }),
+    rule("salary", "Monthly pay", m(4500), "in", "everyMonth", som, "salary", { accountId: id("acc", "checking") }),
+    // Side project income arrives as a past deposit (below), not a recurring rule:
+    // that keeps Safe to spend paced to the monthly payday so the per-day headline
+    // stays believable through the month rather than spiking to a payday days away.
+    rule("rent", "Rent", m(1450), "out", "everyMonth", som, "rent", { accountId: id("acc", "checking") }),
+    rule("phone", "Phone bill", m(55), "out", "everyMonth", iso(...bumpDay(som, 8)), "phone", { accountId: id("acc", "checking") }),
+    rule("internet", "Internet", m(70), "out", "everyMonth", iso(...bumpDay(som, 12)), "internet", { accountId: id("acc", "checking") }),
+    rule("streaming", "Streaming", m(16), "out", "everyMonth", iso(...bumpDay(som, 15)), "streaming", { accountId: id("acc", "checking") }),
+    // Card minimum on the calendar (§4): a debt payment, so paying it lowers the balance.
+    rule("cardmin", "Card minimum", m(120), "out", "everyMonth", iso(...bumpDay(som, 5)), null, { accountId: id("acc", "checking"), debtId: id("debt", "card") }),
   ];
 
   const transactions: Transaction[] = [];
 
   // Paychecks already received: this month's salary (paid) + one side-gig run.
-  paidBill("salary", iso(...bumpDay(som, salaryDay)), rs(180000), "in", "checking", "salary");
-  txn("sidegig-past", addDays(today, -17), rs(22000), "in", "checking", "salary");
+  paidBill("salary", iso(...bumpDay(som, 1)), m(4500), "in", "checking", "salary");
+  txn("sidegig-past", addDays(today, -17), m(550), "in", "checking", "salary");
 
-  // Bills already paid this month (only those whose date has arrived).
-  paidBill("rent", iso(...bumpDay(som, 1)), rs(55000), "out", "checking", "rent");
-  maybePaidBill("phone", 8, rs(3500), "phone");
-  maybePaidBill("internet", 12, rs(6000), "internet");
-  maybePaidBill("streaming", 15, rs(1500), "streaming");
+  // Bills already paid this month (only those whose day has arrived).
+  paidBill("rent", iso(...bumpDay(som, 1)), m(1450), "out", "checking", "rent");
+  maybePaidBill("phone", 8, m(55), "phone");
+  maybePaidBill("internet", 12, m(70), "internet");
+  maybePaidBill("streaming", 15, m(16), "streaming");
 
-  // ~3 weeks of everyday + fun spending, spread with a couple of no-spend days.
-  const spends: Array<[offset: number, cat: string, acct: string, amt: number]> = [
-    [-20, "groceries", "checking", 6400],
-    [-19, "coffee", "card", 450],
-    [-18, "transport", "checking", 300],
-    [-16, "dining", "card", 3200],
-    [-15, "coffee", "card", 450],
-    [-14, "groceries", "checking", 5100],
-    [-12, "transport", "checking", 300],
-    [-11, "coffee", "card", 500],
-    [-10, "dining", "card", 2600],
-    [-8, "groceries", "checking", 4800],
-    [-7, "coffee", "card", 450],
-    [-6, "transport", "checking", 350],
-    [-4, "coffee", "card", 500],
-    [-3, "groceries", "checking", 5600],
-    [-2, "dining", "card", 2100],
-    [-1, "coffee", "card", 450],
+  // ~3 weeks of everyday + fun spending on the everyday account (no card account).
+  const spends: Array<[offset: number, cat: string, usd: number]> = [
+    [-20, "groceries", 112],
+    [-19, "coffee", 5],
+    [-18, "transport", 12],
+    [-16, "dining", 50],
+    [-15, "coffee", 6],
+    [-14, "groceries", 124],
+    [-12, "transport", 9],
+    [-11, "coffee", 4],
+    [-10, "dining", 45],
+    [-8, "groceries", 98],
+    [-7, "coffee", 5],
+    [-6, "transport", 15],
+    [-4, "coffee", 5],
+    [-3, "groceries", 106],
+    [-2, "transport", 8],
+    [-1, "coffee", 6],
   ];
-  spends.forEach(([off, cat, acct, amt], i) => txn(`spend-${i}`, addDays(today, off), rs(amt), "out", acct, cat));
+  spends.forEach(([off, cat, usd], i) => txn(`spend-${i}`, addDays(today, off), m(usd), "out", "checking", cat));
 
-  // Money set aside toward a goal (linked via goalId — derived progress).
-  txn("save-1", addDays(today, -13), rs(15000), "out", "savings", "saving", { goalId: id("goal", "emergency") });
+  // Money set aside this month toward the emergency goal (Saving group + progress).
+  txn("save-1", addDays(today, -9), m(400), "out", "checking", "saving", { goalId: id("goal", "emergency") });
 
-  // One card payment already made, dated AFTER the debt's balanceAsOf (D1: lowers "still owed").
+  // Card is a Debt; this month's minimum is a payment that lowers "still owed"
+  // (FD-6.1). Typed balance 3,320 − 120 paid after the anchor = 3,200 still owed.
   const cardAnchor = addDays(today, -40);
-  txn("debt-pay", addDays(today, -9), rs(6000), "out", "checking", null, { debtId: id("debt", "card") });
-  // This month's linked minimum, paid (also lowers the balance, and marks the calendar item paid).
-  paidBill("debtmin", iso(...bumpDay(som, 5)), rs(6000), "out", "checking", null, { debtId: id("debt", "card") });
+  paidBill("cardmin", iso(...bumpDay(som, 5)), m(120), "out", "checking", null, { debtId: id("debt", "card") });
+
+  // Planned amounts for EVERY spending group (B2): most a little under, dining over.
+  const budgetTemplates: BudgetTemplate[] = [
+    tpl("rent", m(1450)),
+    tpl("internet", m(70)),
+    tpl("phone", m(55)),
+    tpl("streaming", m(16)),
+    tpl("groceries", m(470)), // spent ~440 → a little under
+    tpl("transport", m(60)), // spent ~44 → under
+    tpl("coffee", m(35)), // spent ~26 → under
+    tpl("dining", m(90)), // spent ~95 → the one slightly over
+    tpl("saving", m(400)),
+  ];
 
   const goals: Goal[] = [
-    goal("emergency", "Emergency fund", rs(200000), rs(65000)), // ~40% (65k + 15k saved = 80k)
-    goal("trip", "Trip home", rs(100000), rs(80000)), // 80%
+    goal("emergency", "Emergency fund", m(6000), m(2000)), // 2,000 + 400 saved = 2,400 of 6,000
+    goal("trip", "Trip", m(1500), m(1200)), // 1,200 of 1,500
   ];
 
   const debts: Debt[] = [
     {
       id: id("debt", "card"),
       name: "Credit card",
-      currentBalance: rs(60000),
-      annualInterestRate: 24,
-      minimumPayment: rs(6000),
+      currentBalance: m(3320),
+      annualInterestRate: 22.9,
+      minimumPayment: m(120),
       balanceAsOf: cardAnchor,
       customOrder: null,
       archived: false,
@@ -207,21 +218,24 @@ export function buildDemoRecords(today: IsoDate, currencyCode = "PKR"): DemoReco
     { id: id("asset", "fund"), name: "Index fund", kind: "investment", accountId: null, archived: false, createdAt: T, updatedAt: T },
   ];
   const assetValuations: AssetValuation[] = [
-    val("fund-1", addDays(today, -90), rs(120000)),
-    val("fund-2", addDays(today, -60), rs(128000)),
-    val("fund-3", addDays(today, -30), rs(133000)),
-    val("fund-4", addDays(today, -2), rs(141000)),
+    val("fund-1", addDays(today, -90), m(7800)),
+    val("fund-2", addDays(today, -60), m(8100)),
+    val("fund-3", addDays(today, -30), m(8300)),
+    val("fund-4", addDays(today, -2), m(8500)),
   ];
 
-  return { settings, accounts, categories, transactions, recurringRules, goals, debts, assets, assetValuations };
+  return { settings, accounts, categories, transactions, recurringRules, budgetTemplates, goals, debts, assets, assetValuations };
 
-  // --- record factories (close over `today`, `T`, `transactions`) ---------
+  // --- record factories (close over `cur`, `T`, `transactions`) -----------
 
-  function a(key: string, name: string, type: Account["type"]): Account {
-    return { id: id("acc", key), name, type, openingBalance: 0, currencyCode, archived: false, createdAt: T, updatedAt: T };
+  function a(key: string, name: string, type: Account["type"], openingBalance: Minor): Account {
+    return { id: id("acc", key), name, type, openingBalance, currencyCode: cur.code, archived: false, createdAt: T, updatedAt: T };
   }
   function c(key: string, name: string, bucket: Category["bucket"], nws: Category["needsWantsSavings"], color: string): Category {
     return { id: id("cat", key), name, bucket, needsWantsSavings: nws, color, archived: false, createdAt: T, updatedAt: T };
+  }
+  function tpl(catKey: string, plannedAmount: Minor): BudgetTemplate {
+    return { id: id("tpl", catKey), categoryId: id("cat", catKey), plannedAmount, createdAt: T, updatedAt: T };
   }
   function rule(
     key: string, name: string, amount: Minor, direction: "in" | "out",
@@ -241,7 +255,7 @@ export function buildDemoRecords(today: IsoDate, currencyCode = "PKR"): DemoReco
   function goal(key: string, name: string, target: Minor, starting: Minor): Goal {
     return {
       id: id("goal", key), name, targetAmount: target, startingAmount: starting,
-      targetDate: addDays(today, 180), monthlyContribution: rs(10000), categoryId: id("cat", "saving"),
+      targetDate: addDays(today, 180), monthlyContribution: m(300), categoryId: id("cat", "saving"),
       archived: false, completedAt: null, createdAt: T, updatedAt: T,
     };
   }
@@ -303,6 +317,7 @@ function tablesOf(records: DemoRecords): Array<[keyof FinanceDB & string, { id: 
     ["categories", records.categories],
     ["transactions", records.transactions],
     ["recurringRules", records.recurringRules],
+    ["budgetTemplates", records.budgetTemplates],
     ["goals", records.goals],
     ["debts", records.debts],
     ["assets", records.assets],
@@ -332,16 +347,32 @@ export async function loadDemoData(db: FinanceDB, today: IsoDate, currencyCode?:
 }
 
 /**
+ * Re-create the example records in a chosen currency (Batch 7 §A2). Clears the
+ * existing `demo-` records and loads a fresh set. The user's OWN records (ids
+ * without the `demo-` prefix) are never touched — only the symbol/scale of the
+ * made-up numbers changes. The demo settings row's currency is updated too.
+ */
+export async function reloadDemoDataInCurrency(db: FinanceDB, today: IsoDate, currencyCode: string): Promise<void> {
+  await clearDemoData(db, { keepSettings: true });
+  const records = buildDemoRecords(today, currencyCode);
+  for (const [table, rows] of tablesOf(records)) {
+    if (table === "settings") continue; // the caller owns the settings row's currency
+    if (rows.length) await (db[table] as unknown as { bulkPut(r: unknown[]): Promise<unknown> }).bulkPut(rows);
+  }
+}
+
+/**
  * Remove exactly the example records (`demo-` ids) from every table — and
  * nothing else. Safe to call at any time; real records are untouched.
  */
-export async function clearDemoData(db: FinanceDB): Promise<void> {
+export async function clearDemoData(db: FinanceDB, opts: { keepSettings?: boolean } = {}): Promise<void> {
   const tables: Array<keyof FinanceDB & string> = [
     "settings", "accounts", "categories", "transactions", "recurringRules",
     "recurringOverrides", "budgetTemplates", "budgetPeriodLines",
     "goals", "debts", "assets", "assetValuations",
   ];
   for (const table of tables) {
+    if (table === "settings" && opts.keepSettings) continue;
     const t = db[table] as unknown as {
       where(k: string): { startsWith(p: string): { primaryKeys(): Promise<string[]> } };
       bulkDelete(keys: string[]): Promise<void>;

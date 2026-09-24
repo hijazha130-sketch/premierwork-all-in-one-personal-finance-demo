@@ -17,6 +17,7 @@ import type {
   Settings,
   Transaction,
 } from "@/domain/types";
+import { getCurrency } from "@/domain/currencies";
 import type { Occurrence } from "@/domain/occurrences";
 import type { CashflowProjection, SafeToSpendResult } from "@/domain/cashflow";
 import type { BudgetPeriod, FiftyThirtyTwenty } from "@/domain/budget";
@@ -108,11 +109,10 @@ export function useData(): DataContextValue {
   return ctx;
 }
 
-/** Convenience: currency formatting bound to the current settings. */
+/** Convenience: currency formatting bound to the current settings, via the
+ * one registry (Batch 7 §A3). Symbol/locale/unit word all come from there. */
 export function useCurrency() {
   const { settings } = useData();
-  return {
-    symbol: settings?.currencySymbol ?? "Rs",
-    locale: settings?.locale ?? "en-PK",
-  };
+  const c = getCurrency(settings?.currencyCode);
+  return { symbol: c.symbol, locale: c.locale, unitWord: c.unitWord, code: c.code };
 }

@@ -105,7 +105,10 @@ export function Home() {
             {greeting()}{name ? `, ${name}` : ""}
           </h1>
         </div>
-        <Button onClick={() => openCapture("expense")}>+ Log a spend</Button>
+        {/* Hidden on phones (§N2): the floating button + next step cover logging there. */}
+        <div className="hidden sm:block">
+          <Button onClick={() => openCapture("expense")}>+ Log a spend</Button>
+        </div>
       </header>
 
       {/* 2 — Next step bar */}

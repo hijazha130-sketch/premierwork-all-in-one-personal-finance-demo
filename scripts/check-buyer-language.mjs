@@ -35,6 +35,15 @@ const BANNED = [
   "avalanche",
 ];
 
+// Batch 7: currency words must come from the registry (src/domain/currencies.ts),
+// never hard-coded in a screen/component. Word-boundary regexes so "lowers",
+// "yours" etc. don't false-hit. Narrow on purpose; no "$" rule.
+const BANNED_PATTERNS = [
+  { term: "Rs", re: /\brs\b/ },
+  { term: "PKR", re: /\bpkr\b/ },
+  { term: "rupee", re: /\brupees?\b/ },
+];
+
 // Allowlist: files/paths that are internal-only tooling, if any.
 const IGNORE = [];
 
@@ -66,6 +75,11 @@ for (const file of files) {
   for (const term of BANNED) {
     if (text.includes(term.toLowerCase())) {
       problems.push(`${file}: banned term "${term}" in visible text`);
+    }
+  }
+  for (const { term, re } of BANNED_PATTERNS) {
+    if (re.test(text)) {
+      problems.push(`${file}: hard-coded currency "${term}" in visible text — use the registry`);
     }
   }
 }

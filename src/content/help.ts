@@ -45,6 +45,10 @@ export const HELP: Record<string, HelpEntry> = {
     what: "What you own minus what you owe, on today's numbers. Accounts and assets count as owned; debts and card balances as owed.",
     todo: "Add an asset's latest value now and then — the trend fills in as the months pass.",
   },
+  currency: {
+    what: "Changes how amounts are shown. Your own amounts are not converted.",
+    todo: "Example numbers are re-made to read believably in the currency you pick; anything you entered yourself stays exactly as it was.",
+  },
   monthAtAGlance: {
     what: "The same five groups over a longer stretch, with money in, money out, and what you kept.",
     todo: "Switch the period to compare a single month against the last three, six, or the year so far.",

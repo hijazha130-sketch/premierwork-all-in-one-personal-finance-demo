@@ -154,8 +154,8 @@ describe("quick amounts (§5.6)", () => {
     expect(q.presets).toEqual([100_00, 500_00, 1000_00, 2000_00]);
     expect(q.shortcuts[0]).toMatchObject({ categoryId: "coffee", amount: 4_00, label: "coffee" });
   });
-  it("small presets for USD", () => {
-    expect(quickAmounts([], new Map(), "USD", "2026-09-10").presets).toEqual([1_00, 5_00, 10_00, 20_00]);
+  it("presets for USD come from the registry", () => {
+    expect(quickAmounts([], new Map(), "USD", "2026-09-10").presets).toEqual([5_00, 10_00, 20_00, 50_00]);
   });
 });
 

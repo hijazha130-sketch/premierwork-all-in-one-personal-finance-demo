@@ -42,28 +42,30 @@ export function WelcomeBanner() {
   }
 
   return (
-    <div className="mb-6 rounded-card border border-gold/40 bg-inset px-4 py-4 sm:px-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-4 rounded-card border border-gold/40 bg-inset px-4 py-3 sm:mb-6 sm:px-6 sm:py-4">
+      {/* Compact on phones (§N1): one line of text, then a row of buttons, so the
+          hero number stays visible above the fold. Roomier on desktop. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <p className="text-sm text-ink">
           <span className="font-semibold">You're looking at example numbers</span>
-          {" — they're made up so you can explore everything safely."}
+          <span className="hidden sm:inline">{" — they're made up so you can explore everything safely."}</span>
         </p>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={keepExploring}
-            className="rounded-control px-4 py-2 text-sm font-medium text-ink hover:bg-base min-h-[40px]"
-          >
-            Keep exploring
-          </button>
-          <button
             onClick={startMine}
-            className="rounded-control bg-gold px-4 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px]"
+            className="rounded-control bg-gold px-3 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px]"
           >
             Start with my numbers
           </button>
           <button
+            onClick={keepExploring}
+            className="rounded-control border border-hairline px-3 py-2 text-sm font-medium text-muted hover:text-ink min-h-[40px]"
+          >
+            Keep exploring
+          </button>
+          <button
             onClick={() => navigate("/more")}
-            className="rounded-control border border-hairline px-4 py-2 text-sm font-medium text-muted hover:text-ink min-h-[40px]"
+            className="rounded-control border border-hairline px-3 py-2 text-sm font-medium text-muted hover:text-ink min-h-[40px]"
           >
             I already have a planner
           </button>

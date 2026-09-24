@@ -64,7 +64,7 @@ export function OccurrenceActions({ occurrence }: { occurrence: Occurrence }) {
   return (
     <div className="flex items-center gap-3 text-sm">
       <button className="rounded-control py-2 text-gold hover:underline" onClick={() => rule && openConfirm(rule, occurrence)}>
-        Mark as paid
+        {occurrence.direction === "in" ? "Mark as received" : "Mark as paid"}
       </button>
       <button className="rounded-control py-2 text-muted hover:text-ink" onClick={openAdjust}>
         Adjust

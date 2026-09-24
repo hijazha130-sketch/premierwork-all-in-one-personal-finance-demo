@@ -9,15 +9,19 @@ export function MoneyAmount({
   signed = false,
   tone,
   size = "md",
+  whole = false,
 }: {
   amount: Minor;
   className?: string;
   signed?: boolean;
   tone?: "default" | "positive" | "attention" | "muted";
   size?: "sm" | "md" | "lg" | "hero";
+  /** Summary figures (e.g. interest) show no decimals (Batch 7 §N4). */
+  whole?: boolean;
 }) {
   const { symbol, locale } = useCurrency();
-  const text = formatMoney(amount, { symbol, locale, signed });
+  const shown = whole ? Math.round(amount / 100) * 100 : amount;
+  const text = formatMoney(shown, { symbol, locale, signed });
 
   // NOTE: `sm` uses the arbitrary `text-[1rem]`, NOT `text-base`. This app defines
   // a `base` COLOR (surface-base), so `text-base` also emits a color utility that

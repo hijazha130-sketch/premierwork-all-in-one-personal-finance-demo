@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useData } from "@/state/dataContext";
 import { Button, Card, Field, Segmented, SelectInput, TextInput } from "@/components/ui";
 import { defaultCategoryInputs } from "@/data/seed";
+import { CURRENCIES as CURRENCY_REGISTRY, getCurrency, defaultCushionMinor } from "@/domain/currencies";
 import { parseMajorToMinor } from "@/lib/money";
 import { todayIso } from "@/lib/period";
 import type { AccountType, BudgetMethod, RecurringFrequency, TransactionDirection } from "@/domain/types";
@@ -30,14 +31,8 @@ const FREQUENCIES: { value: RecurringFrequency; label: string }[] = [
   { value: "oneTime", label: "One time" },
 ];
 
-const CURRENCIES = [
-  { code: "PKR", symbol: "Rs", locale: "en-PK" },
-  { code: "USD", symbol: "$", locale: "en-US" },
-  { code: "GBP", symbol: "£", locale: "en-GB" },
-  { code: "EUR", symbol: "€", locale: "en-IE" },
-  { code: "INR", symbol: "₹", locale: "en-IN" },
-  { code: "AED", symbol: "AED", locale: "en-AE" },
-];
+// The one currency registry (Batch 7 §A3) drives the picker; default is USD.
+const CURRENCIES = CURRENCY_REGISTRY;
 
 const STEPS = ["Currency", "Accounts", "People", "Groups", "Income", "Bills", "Budget"];
 const OPTIONAL_STEPS = [2, 4, 5, 6]; // People, Income, Bills, Budget
@@ -48,7 +43,7 @@ export function Setup() {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const [currency, setCurrency] = useState(CURRENCIES[0]);
+  const [currency, setCurrency] = useState(() => getCurrency("USD"));
   const [accounts, setAccounts] = useState<DraftAccount[]>([{ name: "", type: "checking", balance: "" }]);
   const [people, setPeople] = useState<DraftPerson[]>([]);
   const [groups, setGroups] = useState(() => defaultCategoryInputs().map((c) => ({ ...c, on: true })));
@@ -84,6 +79,7 @@ export function Setup() {
         currencySymbol: currency.symbol,
         locale: currency.locale,
         budgetMethod,
+        safetyFloor: defaultCushionMinor(currency.code), // fresh-setup cushion from the registry
         setupComplete: true,
       });
       let firstAccountId = "";
@@ -334,7 +330,7 @@ export function Setup() {
                   onChange={setBudgetMethod}
                   options={[
                     { value: "carryOver", label: "Roll leftover into next month" },
-                    { value: "zeroBased", label: "Give every rupee a job" },
+                    { value: "zeroBased", label: `Give every ${currency.unitWord} a job` },
                   ]}
                 />
               </div>

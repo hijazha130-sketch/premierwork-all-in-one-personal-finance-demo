@@ -21,8 +21,7 @@ import { savedForGoal } from "@/domain/goals";
 import { debtBalanceNow } from "@/domain/debt";
 import { inRange, type DateRange } from "@/lib/period";
 import { addMinor } from "@/lib/money";
-
-const MINOR_PER_MAJOR = 100;
+import { getCurrency, quickAmountPresets, putAwayThreshold } from "@/domain/currencies";
 
 // --- §5.2 spending groups -------------------------------------------------
 
@@ -235,22 +234,19 @@ export function nextStepAndChecklist(
 
 // --- §5.6 quick log amounts -----------------------------------------------
 
-const HIGH_DENOM = new Set(["PKR", "INR", "JPY", "KRW", "IDR", "VND", "HUF", "CLP", "ISK"]);
-
 export interface QuickAmounts {
   presets: Minor[]; // in minor units
   shortcuts: { categoryId: string; label: string; amount: Minor }[]; // up to 3
 }
 
-/** Preset amounts by currency + up to 3 recent (category, amount) shortcuts (§5.6). */
+/** Preset amounts by currency (registry) + up to 3 recent (category, amount) shortcuts (§5.6). */
 export function quickAmounts(
   transactions: Transaction[],
   categoriesById: Map<string, Category>,
   currencyCode: string,
   today: IsoDate,
 ): QuickAmounts {
-  const majors = HIGH_DENOM.has(currencyCode.toUpperCase()) ? [100, 500, 1000, 2000] : [1, 5, 10, 20];
-  const presets = majors.map((n) => n * MINOR_PER_MAJOR);
+  const presets = quickAmountPresets(currencyCode);
 
   const cutoff = shiftDays(today, -30);
   const counts = new Map<string, { categoryId: string; amount: Minor; count: number }>();
@@ -318,10 +314,11 @@ export function computeMilestones(inp: MilestonesInput): Milestone[] {
   let monthAllPaid = false;
   for (const occ of byMonth.values()) if (occ.length > 0 && occ.every((o) => o.status === "paid")) { monthAllPaid = true; break; }
 
-  // 5: total put away ever reached 1,000 major (goal starting + contributions).
+  // 5: total put away ever reached the currency's threshold (goal starting + contributions).
+  const cur = getCurrency(inp.currencyCode);
   let totalSaved = goals.reduce((s, g) => s + g.startingAmount, 0);
   for (const t of transactions) if (t.goalId && t.direction === "out") totalSaved += t.amount;
-  const putAway = totalSaved >= 1000 * MINOR_PER_MAJOR;
+  const putAway = totalSaved >= putAwayThreshold(cur.code);
 
   // 6: any goal complete.
   const anyGoalDone = goals.some((g) => savedForGoal(g, transactions) >= g.targetAmount);
@@ -341,7 +338,12 @@ export function computeMilestones(inp: MilestonesInput): Milestone[] {
     mk("firstBillPaid", "First bill marked paid", "You marked a repeating bill as paid.", YN(out.some((t) => t.recurringRuleId))),
     mk("noSpendDay", "A day with no spending", "A whole day went by with nothing spent.", YN(noSpendDay)),
     mk("monthAllBillsPaid", "A month with every bill paid", "Every bill in a past month was paid.", YN(monthAllPaid)),
-    mk("putAway1000", "1,000 put away", "Your savings reached 1,000.", YN(putAway)),
+    mk(
+      "putAway1000",
+      `${cur.symbol}${cur.putAwayMilestone.toLocaleString(cur.locale)} put away`,
+      `Your savings reached ${cur.symbol}${cur.putAwayMilestone.toLocaleString(cur.locale)}.`,
+      YN(putAway),
+    ),
     mk("goalReached", "A goal reached in full", "One of your goals hit its target.", goals.length === 0 ? "notCounted" : YN(anyGoalDone)),
     mk("debtPaidOff", "A debt paid off", "You cleared a debt in full.", debts.length === 0 ? "notCounted" : YN(anyDebtPaid)),
     mk("netWorthUp", "Net worth went up", "Your net worth rose from one month to the next.", netWorthSeries.length < 2 ? "notCounted" : YN(nwUp)),

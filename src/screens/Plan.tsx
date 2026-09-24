@@ -32,7 +32,10 @@ const PLAN_VIEWS: PlanView[] = ["budget", "month", "split", "goals", "debt"];
 export function Plan() {
   const [params] = useSearchParams();
   const requested = params.get("view");
-  const initialView = PLAN_VIEWS.includes(requested as PlanView) ? (requested as PlanView) : "budget";
+  // §B6 aliases so door links like #/plan?view=503020 land on 50/30/20.
+  const alias: Record<string, PlanView> = { "503020": "split", "50/30/20": "split" };
+  const mapped = requested ? alias[requested] ?? (requested as PlanView) : "budget";
+  const initialView = PLAN_VIEWS.includes(mapped) ? mapped : "budget";
   const [view, setView] = useState<PlanView>(initialView);
   return (
     <div className="space-y-8">
@@ -64,7 +67,7 @@ function pad2(n: number): string {
 
 function BudgetView() {
   const { budgetForPeriod, budgetPeriodLines, repo } = useData();
-  const { symbol, locale } = useCurrency();
+  const { symbol, locale, unitWord } = useCurrency();
   const [{ year, month }, setMonth] = useState(currentMonth());
 
   const periodKey = `${year}-${pad2(month)}`;
@@ -120,7 +123,7 @@ function BudgetView() {
           <MoneyAmount amount={budget.leftToAssign} size="lg" tone={budget.leftToAssign < 0 ? "attention" : "default"} />
           <p className="text-sm text-muted mt-2">
             {budget.leftToAssign === 0
-              ? "Every rupee has a job. Nicely done."
+              ? `Every ${unitWord} has a job. Nicely done.`
               : budget.leftToAssign > 0
                 ? "Money coming in that you haven't given a job yet."
                 : "You've planned to spend more than you expect to earn this month."}

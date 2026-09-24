@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { useData } from "@/state/dataContext";
+import { useData, useCurrency } from "@/state/dataContext";
 import { useTheme } from "@/state/ThemeProvider";
 import { getDB } from "@/data/db";
 import { downloadBackup, importDatabaseString } from "@/data/backup";
 import { Button, Card, Field, SectionTitle, Segmented, TextInput } from "@/components/ui";
+import { CurrencySetting } from "@/components/CurrencyPicker";
 import { minorToMajor, parseMajorToMinor } from "@/lib/money";
 import { WALLPAPERS } from "@/lib/wallpapers";
 import type { Settings } from "@/domain/types";
@@ -15,6 +16,7 @@ import type { Settings } from "@/domain/types";
  */
 export function More() {
   const { settings, repo } = useData();
+  const { unitWord } = useCurrency();
   const { theme, setTheme } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string>("");
@@ -71,6 +73,10 @@ export function More() {
           ]}
         />
 
+        <div className="mt-6 border-t border-hairline pt-5">
+          <CurrencySetting />
+        </div>
+
         <div className="mt-6">
           <div className="text-sm font-medium text-ink mb-1">Background</div>
           <p className="text-muted text-sm mb-3">A soft tint behind everything. It stays gentle so your cards keep their glow.</p>
@@ -107,7 +113,7 @@ export function More() {
           onChange={(m) => repo.saveSettings({ budgetMethod: m })}
           options={[
             { value: "carryOver", label: "Roll leftover into next month" },
-            { value: "zeroBased", label: "Give every rupee a job" },
+            { value: "zeroBased", label: `Give every ${unitWord} a job` },
           ]}
         />
       </Card>

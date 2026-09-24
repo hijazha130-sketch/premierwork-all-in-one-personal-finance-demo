@@ -1,10 +1,9 @@
 // DEMO: HashRouter (not BrowserRouter) so the statically-hosted demo survives a
-// page refresh at any route — the path lives in the URL hash, which GitHub Pages
-// never sees, so it always serves index.html and the app routes itself. Deep
-// links therefore take the hash form, e.g. …/#/?start=debt.
+// refresh at any route. Door links work in either form — readDoorParams() reads
+// the query before the hash — e.g. …/?start=debt or …/#/?start=debt&currency=GBP.
 import { useEffect, useRef } from "react";
-import { HashRouter, Routes, Route, useNavigate, useSearchParams } from "react-router-dom";
-import { startScreenPath } from "@/lib/edition";
+import { HashRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { startScreenPath, readDoorParams } from "@/lib/edition";
 import { ThemeProvider } from "@/state/ThemeProvider";
 import { DataProvider } from "@/state/DataProvider";
 import { useData } from "@/state/dataContext";
@@ -47,15 +46,14 @@ function Gate({ children }: { children: React.ReactNode }) {
  * listing's demo link opens on its own hero screen.
  */
 function StartHandler() {
-  const [params] = useSearchParams();
   const navigate = useNavigate();
   const handled = useRef(false);
   useEffect(() => {
     if (handled.current) return;
     handled.current = true;
-    const path = startScreenPath(params.get("start"));
+    const path = startScreenPath(readDoorParams().start);
     if (path) navigate(path, { replace: true });
-  }, [params, navigate]);
+  }, [navigate]);
   return null;
 }
 
