@@ -5,7 +5,7 @@ import { Card, Button, Sheet, Field, TextInput, SelectInput } from "@/components
 import { MoneyAmount } from "@/components/MoneyAmount";
 import { EmptyState } from "@/components/EmptyState";
 import { HelpTip } from "@/components/HelpTip";
-import { parseMajorToMinor, minorToMajor } from "@/lib/money";
+import { parseMajorToMinor, minorToMajor, formatMoney } from "@/lib/money";
 import { formatDateLabel, todayIso } from "@/lib/period";
 import type { Goal } from "@/domain/types";
 
@@ -16,7 +16,7 @@ import type { Goal } from "@/domain/types";
  */
 export function GoalsView() {
   const { goals, derived, categories, repo } = useData();
-  const { symbol, locale } = useCurrency();
+  const { code, locale } = useCurrency();
   const { openContribution } = useCapture();
   const [editing, setEditing] = useState<Goal | "new" | null>(null);
 
@@ -111,7 +111,7 @@ export function GoalsView() {
                       "You've hit your target."
                     )}
                   </span>
-                  <span className="text-muted">{guidance(r, symbol, locale)}</span>
+                  <span className="text-muted">{guidance(r, code, locale)}</span>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-3">
@@ -153,18 +153,17 @@ export function GoalsView() {
 /** One-line guidance under a goal, in plain words (no internal terms). */
 function guidance(
   r: { monthlyTarget: number | null; projectedDate: string | null; complete: boolean },
-  symbol: string,
+  code: string,
   locale: string,
 ): string {
   if (r.complete) return "";
   if (r.projectedDate) return `On track for ${formatDateLabel(r.projectedDate, locale)}`;
-  if (r.monthlyTarget != null && r.monthlyTarget > 0) return `${formatShort(r.monthlyTarget, symbol, locale)}/month to hit your date`;
+  if (r.monthlyTarget != null && r.monthlyTarget > 0) return `${formatShort(r.monthlyTarget, code, locale)}/month to hit your date`;
   return "";
 }
 
-function formatShort(minor: number, symbol: string, locale: string): string {
-  const major = Math.abs(minor) / 100;
-  return `${symbol} ${new Intl.NumberFormat(locale, { maximumFractionDigits: major % 1 === 0 ? 0 : 2 }).format(major)}`;
+function formatShort(minor: number, code: string, locale: string): string {
+  return formatMoney(Math.abs(minor), { code, locale, whole: true });
 }
 
 type GoalDraft = Omit<Goal, "id" | "createdAt" | "updatedAt" | "archived" | "completedAt">;

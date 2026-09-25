@@ -4,7 +4,7 @@ import { useData } from "@/state/dataContext";
 import { Button, Card, Field, Segmented, SelectInput, TextInput } from "@/components/ui";
 import { defaultCategoryInputs } from "@/data/seed";
 import { CURRENCIES as CURRENCY_REGISTRY, getCurrency, defaultCushionMinor } from "@/domain/currencies";
-import { parseMajorToMinor } from "@/lib/money";
+import { parseMajorToMinor, formatMoney } from "@/lib/money";
 import { todayIso } from "@/lib/period";
 import type { AccountType, BudgetMethod, RecurringFrequency, TransactionDirection } from "@/domain/types";
 
@@ -176,7 +176,7 @@ export function Setup() {
                 ))}
               </SelectInput>
             </Field>
-            <p className="text-sm text-muted">Amounts will look like <span className="font-amount text-ink">{currency.symbol} 1,250</span>.</p>
+            <p className="text-sm text-muted">Amounts will look like <span className="font-amount text-ink">{formatMoney(125000, { code: currency.code, locale: currency.locale, whole: true })}</span>.</p>
           </StepShell>
         )}
 

@@ -115,7 +115,9 @@ export function WealthView() {
             {debts.map((d) => (
               <div key={d.id} className="flex items-center justify-between py-3">
                 <div className="text-ink font-medium">{d.name}</div>
-                <MoneyAmount amount={d.currentBalance} size="sm" tone="attention" />
+                {/* F2: the owe row uses the SAME derived balance (FD-6.1) as the
+                    Debt tab and net worth, so all three always agree. */}
+                <MoneyAmount amount={derived.debtBalances[d.id] ?? d.currentBalance} size="sm" tone="attention" />
               </div>
             ))}
           </div>

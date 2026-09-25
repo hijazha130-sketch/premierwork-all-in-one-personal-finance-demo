@@ -253,6 +253,11 @@ export function quickAmounts(
   for (const t of transactions) {
     if (t.source !== "manual" || t.type !== "expense" || t.direction !== "out") continue;
     if (!t.categoryId || t.date < cutoff || t.date > today) continue;
+    // §F3: money moved to savings or paid on a debt isn't a spend — keep it out
+    // of the quick shortcuts (which are for logging everyday spends).
+    if (t.goalId || t.investmentId || t.debtId) continue;
+    const cat = categoriesById.get(t.categoryId);
+    if (cat && (cat.bucket === "savings" || cat.bucket === "debt")) continue;
     const key = `${t.categoryId}|${t.amount}`;
     const cur = counts.get(key) ?? { categoryId: t.categoryId, amount: t.amount, count: 0 };
     cur.count += 1;

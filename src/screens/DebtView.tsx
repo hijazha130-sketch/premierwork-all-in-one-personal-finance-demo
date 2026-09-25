@@ -5,7 +5,7 @@ import { Card, Button, Segmented, Sheet, Field, TextInput } from "@/components/u
 import { MoneyAmount } from "@/components/MoneyAmount";
 import { EmptyState } from "@/components/EmptyState";
 import { HelpTip } from "@/components/HelpTip";
-import { parseMajorToMinor, minorToMajor } from "@/lib/money";
+import { parseMajorToMinor, minorToMajor, formatMoney } from "@/lib/money";
 import { formatDateLabel } from "@/lib/period";
 import type { Debt, DebtStrategy } from "@/domain/types";
 
@@ -17,7 +17,7 @@ import type { Debt, DebtStrategy } from "@/domain/types";
  */
 export function DebtView() {
   const { debts, settings, derived, repo, recurringRules } = useData();
-  const { symbol, locale } = useCurrency();
+  const { code, locale } = useCurrency();
   const { openDebtPayment } = useCapture();
   const [editing, setEditing] = useState<Debt | "new" | null>(null);
   const editingHasBill =
@@ -56,7 +56,7 @@ export function DebtView() {
             <p className="mt-2 text-sm text-muted">
               {plan.debtFreeDate ? <>Debt-free by {formatDateLabel(plan.debtFreeDate, locale)}</> : "Not cleared at this payment yet"}
               {" · "}
-              <MoneyAmount amount={plan.totalInterest} size="sm" tone="attention" whole /> interest along the way
+              <MoneyAmount amount={plan.totalInterest} size="sm" tone="attention" /> interest along the way
             </p>
           </Card>
 
@@ -90,7 +90,7 @@ export function DebtView() {
               </div>
               <div>
                 <div className="text-xs font-semibold uppercase tracking-widest text-muted mb-1">Interest you'll pay</div>
-                <MoneyAmount amount={plan.totalInterest} size="md" tone="attention" whole />
+                <MoneyAmount amount={plan.totalInterest} size="md" tone="attention" />
               </div>
             </div>
 
@@ -115,7 +115,7 @@ export function DebtView() {
                       </div>
                       <div className="text-sm text-muted mt-0.5">
                         <MoneyAmount amount={derived.debtBalances[d.id] ?? d.currentBalance} size="sm" /> still owed · {d.annualInterestRate}%/yr · min{" "}
-                        {formatShort(d.minimumPayment, symbol, locale)}/mo
+                        {formatShort(d.minimumPayment, code, locale)}/mo
                       </div>
                     </div>
                   </div>
@@ -172,9 +172,8 @@ export function DebtView() {
   );
 }
 
-function formatShort(minor: number, symbol: string, locale: string): string {
-  const major = Math.abs(minor) / 100;
-  return `${symbol} ${new Intl.NumberFormat(locale, { maximumFractionDigits: major % 1 === 0 ? 0 : 2 }).format(major)}`;
+function formatShort(minor: number, code: string, locale: string): string {
+  return formatMoney(Math.abs(minor), { code, locale, whole: true });
 }
 
 /** Extra-each-month input; commits the parsed amount on blur/Enter. */

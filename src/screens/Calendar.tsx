@@ -37,7 +37,7 @@ function compactMajor(minor: number): string {
  */
 export function Calendar() {
   const { transactions, occurrencesForRange, recurringRulesById, categoriesById } = useData();
-  const { symbol, locale } = useCurrency();
+  const { code, locale } = useCurrency();
   const [{ year, month }, setMonth] = useState(currentMonth());
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -134,7 +134,7 @@ export function Calendar() {
               </div>
               {weekOut > 0 && (
                 <div className="pr-1 pt-0.5 text-right text-[11px] text-muted">
-                  Going out this week: {formatMoney(weekOut, { symbol, locale })}
+                  Going out this week: {formatMoney(weekOut, { code, locale, whole: true })}
                 </div>
               )}
             </div>

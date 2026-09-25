@@ -47,6 +47,7 @@ export function TransactionRow({ row }: { row: DisplayRow }) {
         amount={isTransfer ? row.amount : isIncome ? row.amount : -row.amount}
         size="sm"
         signed={isIncome && !isTransfer}
+        cents
         tone={isTransfer ? "muted" : isIncome ? "positive" : "default"}
       />
     </button>

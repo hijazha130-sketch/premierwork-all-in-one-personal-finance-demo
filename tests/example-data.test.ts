@@ -84,6 +84,12 @@ describe("example data — acceptance across all 7 currencies (Batch 7 §A4)", (
         // The liability equals the Debt tab's derived balance, counted once.
         expect(nw.breakdown.planDebts).toBe(derivedDebts[0].currentBalance);
       });
+
+      it("(F2) the Wealth owe balance is the DERIVED balance (not the typed one)", () => {
+        const { derivedDebts, r } = build(code, days(20));
+        // The card had a payment after the anchor, so derived < typed.
+        expect(derivedDebts[0].currentBalance).toBeLessThan(r.debts[0].currentBalance);
+      });
     });
   }
 

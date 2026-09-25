@@ -49,7 +49,7 @@ const DONE_TEXT: Record<string, string> = {
  */
 export function Home() {
   const { accounts, transactions, derived, recurringRulesById, categories, settings, repo } = useData();
-  const { locale, symbol } = useCurrency();
+  const { locale, code } = useCurrency();
   const { openCapture } = useCapture();
   const [showReceipt, setShowReceipt] = useState(false);
 
@@ -82,7 +82,7 @@ export function Home() {
   const bigLabel = BIG_LABEL[settings?.bigNumberLabel ?? "safeToSpend"];
   const name = settings?.displayName?.trim();
   const endLabel = up.endLabel === "payday" ? "payday" : "the month's end";
-  const fmt = (m: number) => formatMoney(m, { symbol, locale });
+  const fmt = (m: number) => formatMoney(m, { code, locale, whole: true });
 
   const nameOf = (o: Occurrence): string => {
     const found = recurringRulesById.get(o.ruleId)?.name;

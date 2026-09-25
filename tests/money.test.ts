@@ -36,11 +36,20 @@ describe("money utility — integer minor units, no float error", () => {
     expect(total).toBe(99999999000);
   });
 
-  it("formats to a clean display string", () => {
-    expect(formatMoney(125000, { symbol: "Rs" })).toBe("Rs 1,250");
-    expect(formatMoney(125050, { symbol: "Rs" })).toBe("Rs 1,250.50");
-    expect(formatMoney(0, { symbol: "Rs" })).toBe("Rs 0");
-    expect(formatMoney(-5000, { symbol: "Rs" })).toBe("-Rs 50");
-    expect(formatMoney(5000, { symbol: "Rs", signed: true })).toBe("+Rs 50");
+  it("formats with the native symbol, no extra space (Batch 8 §F1)", () => {
+    // USD: symbol attaches with no space; cents only when non-zero.
+    expect(formatMoney(16300, { code: "USD" })).toBe("$163");
+    expect(formatMoney(16316, { code: "USD" })).toBe("$163.16");
+    expect(formatMoney(-145000, { code: "USD" })).toBe("-$1,450");
+    expect(formatMoney(5000, { code: "USD", signed: true })).toBe("+$50");
+    // `whole` drops cents and rounds DOWN (never overstates).
+    expect(formatMoney(13985, { code: "USD", whole: true })).toBe("$139");
+    // No "$ " (symbol + space) anywhere for the space-less currencies.
+    for (const code of ["USD", "GBP", "EUR", "CAD", "AUD"]) {
+      expect(formatMoney(16316, { code })).not.toContain("$ ");
+      expect(formatMoney(16316, { code })).not.toContain("Rs");
+    }
+    // PKR keeps its own spacing via the platform formatter.
+    expect(formatMoney(2000000, { code: "PKR", locale: "en-PK", whole: true })).toContain("20,000");
   });
 });

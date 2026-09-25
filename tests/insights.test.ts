@@ -157,6 +157,22 @@ describe("quick amounts (§5.6)", () => {
   it("presets for USD come from the registry", () => {
     expect(quickAmounts([], new Map(), "USD", "2026-09-10").presets).toEqual([5_00, 10_00, 20_00, 50_00]);
   });
+  it("§F3: leaves savings moves and debt payments out of the shortcuts", () => {
+    const cats = new Map([
+      ["coffee", cat("coffee", "expenses", "wants")],
+      ["save", cat("save", "savings", "savings")],
+    ]);
+    const txns = [
+      tx({ amount: 4_00, direction: "out", date: "2026-09-08", categoryId: "coffee" }),
+      tx({ amount: 4_00, direction: "out", date: "2026-09-09", categoryId: "coffee" }),
+      tx({ amount: 400_00, direction: "out", date: "2026-09-07", categoryId: "save", goalId: "g" }), // savings move
+      tx({ amount: 120_00, direction: "out", date: "2026-09-06", categoryId: "coffee", debtId: "d" }), // debt payment
+    ];
+    const q = quickAmounts(txns, cats, "USD", "2026-09-10");
+    expect(q.shortcuts.every((s) => s.categoryId === "coffee" && s.amount === 4_00)).toBe(true);
+    expect(q.shortcuts.some((s) => s.categoryId === "save")).toBe(false);
+    expect(q.shortcuts.some((s) => s.amount === 120_00)).toBe(false);
+  });
 });
 
 describe("milestones (§5.7)", () => {

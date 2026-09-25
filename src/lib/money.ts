@@ -56,40 +56,39 @@ export function minorToMajor(amount: Minor, fractionDigits = 2): number {
 }
 
 export interface FormatOptions {
-  symbol: string;
+  code: string; // currency code (registry) — drives the native symbol
   locale?: string;
-  fractionDigits?: number;
-  /** Show decimals only when the amount isn't a whole major unit. */
-  trimWholeDecimals?: boolean;
+  /** Summary figures: no cents, rounded DOWN (never overstate what's safe). */
+  whole?: boolean;
   /** Prefix with + / - for in/out. */
   signed?: boolean;
 }
 
 /**
- * Format minor units to a display string, e.g. "Rs 1,250".
- * This is the ONE place a currency string is produced.
+ * Format minor units to a display string using the platform's native currency
+ * formatter (Batch 8 §F1): "$163", "-$1,450", "£400", "Rs 20,000" — the symbol
+ * attaches with no extra space, and each currency keeps its own spacing. This is
+ * the ONE place a currency string is produced.
+ *
+ * - `whole`: summary figures show no cents, rounded DOWN.
+ * - otherwise: cents show only when they are non-zero (transaction rows / entry).
+ * The sign is placed before the symbol ("-$1,450"), consistently across locales.
  */
 export function formatMoney(amount: Minor, opts: FormatOptions): string {
-  const {
-    symbol,
-    locale = "en-US",
-    fractionDigits = 2,
-    trimWholeDecimals = true,
-    signed = false,
-  } = opts;
-
+  const { code, locale = "en-US", whole = false, signed = false } = opts;
   const negative = amount < 0;
   const abs = Math.abs(amount);
-  const factor = Math.pow(10, fractionDigits);
-  const whole = Math.trunc(abs / factor);
-  const frac = abs % factor;
+  const hasCents = !whole && abs % 100 !== 0;
+  const major = whole ? Math.floor(abs / 100) : abs / 100;
 
-  const showDecimals = !(trimWholeDecimals && frac === 0);
-  const numberStr = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: showDecimals ? fractionDigits : 0,
-    maximumFractionDigits: showDecimals ? fractionDigits : 0,
-  }).format(showDecimals ? abs / factor : whole);
+  const body = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: code,
+    currencyDisplay: "narrowSymbol",
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: hasCents ? 2 : 0,
+  }).format(major);
 
   const sign = negative ? "-" : signed ? "+" : "";
-  return `${sign}${symbol} ${numberStr}`;
+  return `${sign}${body}`;
 }

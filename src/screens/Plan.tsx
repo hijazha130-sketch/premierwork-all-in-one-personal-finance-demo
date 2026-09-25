@@ -8,7 +8,7 @@ import { FiftyThirtyTwentyView } from "@/screens/FiftyThirtyTwenty";
 import { GoalsView } from "@/screens/GoalsView";
 import { DebtView } from "@/screens/DebtView";
 import { MonthGlance } from "@/screens/MonthGlance";
-import { minorToMajor, parseMajorToMinor } from "@/lib/money";
+import { minorToMajor, parseMajorToMinor, formatMoney } from "@/lib/money";
 import { currentMonth, monthLabel } from "@/lib/period";
 import type { BudgetLine } from "@/domain/budget";
 
@@ -67,7 +67,7 @@ function pad2(n: number): string {
 
 function BudgetView() {
   const { budgetForPeriod, budgetPeriodLines, repo } = useData();
-  const { symbol, locale, unitWord } = useCurrency();
+  const { code, locale, unitWord } = useCurrency();
   const [{ year, month }, setMonth] = useState(currentMonth());
 
   const periodKey = `${year}-${pad2(month)}`;
@@ -170,7 +170,7 @@ function BudgetView() {
                 periodKey={periodKey}
                 showCarryIn={isCarryOver && line.carryIn !== 0}
                 justThisMonth={hasLine(line.categoryId)}
-                symbol={symbol}
+                code={code}
                 locale={locale}
                 onCommit={(amount) => commitPlanned(line.categoryId, amount)}
                 onJustThisMonth={() => repo.setBudgetPeriodLine({ periodKey, categoryId: line.categoryId, plannedAmount: line.planned })}
@@ -189,7 +189,7 @@ function BudgetRow({
   periodKey,
   showCarryIn,
   justThisMonth,
-  symbol,
+  code,
   locale,
   onCommit,
   onJustThisMonth,
@@ -199,7 +199,7 @@ function BudgetRow({
   periodKey: string;
   showCarryIn: boolean;
   justThisMonth: boolean;
-  symbol: string;
+  code: string;
   locale: string;
   onCommit: (amount: number) => void;
   onJustThisMonth: () => void;
@@ -232,7 +232,7 @@ function BudgetRow({
             <span className="text-positive">
               {" · "}
               {line.carryIn >= 0 ? "carried in " : "short by "}
-              {formatShort(line.carryIn, symbol, locale)} from last month
+              {formatShort(line.carryIn, code, locale)} from last month
             </span>
           )}
         </div>
@@ -262,7 +262,6 @@ function BudgetRow({
 }
 
 /** Compact "Rs X" for the inline carry-in note (absolute value). */
-function formatShort(minor: number, symbol: string, locale: string): string {
-  const major = Math.abs(minor) / 100;
-  return `${symbol} ${new Intl.NumberFormat(locale, { maximumFractionDigits: major % 1 === 0 ? 0 : 2 }).format(major)}`;
+function formatShort(minor: number, code: string, locale: string): string {
+  return formatMoney(Math.abs(minor), { code, locale, whole: true });
 }
