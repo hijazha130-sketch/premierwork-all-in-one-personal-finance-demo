@@ -8,6 +8,7 @@ import { Segmented } from "@/components/ui";
 import { QuickCapture } from "@/screens/QuickCapture";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
+import { showDemoNotice, ETSY_URL } from "@/lib/edition";
 
 /**
  * The persistent application shell (Section 2 & 5): brand + context header, a
@@ -66,7 +67,20 @@ export function AppShell() {
             <div className="md:hidden">
               <Brand compact />
             </div>
-            <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              {/* Batch 9a (demo edition only): an always-there way to the full app,
+                  compact on phones so it never pushes the other buttons off-screen. */}
+              {showDemoNotice() && (
+                <a
+                  href={ETSY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex shrink-0 items-center whitespace-nowrap rounded-pill bg-gold px-3 py-1.5 text-sm font-semibold text-base hover:opacity-90 min-h-[36px]"
+                >
+                  <span className="sm:hidden">Full app</span>
+                  <span className="hidden sm:inline">Get the full app</span>
+                </a>
+              )}
               <CurrencyPicker />
               <Segmented
                 ariaLabel="Theme"

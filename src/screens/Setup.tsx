@@ -4,6 +4,7 @@ import { useData } from "@/state/dataContext";
 import { Button, Card, Field, Segmented, SelectInput, TextInput } from "@/components/ui";
 import { defaultCategoryInputs } from "@/data/seed";
 import { CURRENCIES as CURRENCY_REGISTRY, getCurrency, defaultCushionMinor } from "@/domain/currencies";
+import { showDemoNotice, ETSY_URL, DEMO_SETUP_NOTE } from "@/lib/edition";
 import { parseMajorToMinor, formatMoney } from "@/lib/money";
 import { todayIso } from "@/lib/period";
 import type { AccountType, BudgetMethod, RecurringFrequency, TransactionDirection } from "@/domain/types";
@@ -151,6 +152,18 @@ export function Setup() {
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
+      {/* Batch 9a (demo edition only): a plain reminder that setup numbers aren't
+          kept, above every step, with a link to the full app. */}
+      {showDemoNotice() && (
+        <p className="rounded-control border border-gold/40 bg-inset px-3 py-2 text-xs text-muted">
+          {DEMO_SETUP_NOTE.replace(" Get the full app to save them.", " ")}
+          <a href={ETSY_URL} target="_blank" rel="noopener noreferrer" className="font-medium text-gold hover:underline">
+            Get the full app
+          </a>{" "}
+          to save them.
+        </p>
+      )}
+
       {/* Progress */}
       <div className="flex items-center gap-2">
         {STEPS.map((label, i) => (

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDB } from "@/data/db";
 import { clearDemoData, hasDemoData } from "@/data/demo";
+import { showDemoNotice, ETSY_URL, DEMO_BANNER_TEXT } from "@/lib/edition";
 
 const DISMISS_KEY = "demo-banner-dismissed";
 
@@ -41,19 +42,42 @@ export function WelcomeBanner() {
     navigate("/setup");
   }
 
+  const demo = showDemoNotice();
+
   return (
     <div className="mb-4 rounded-card border border-gold/40 bg-inset px-4 py-3 sm:mb-6 sm:px-6 sm:py-4">
       {/* Compact on phones (§N1): one line of text, then a row of buttons, so the
           hero number stays visible above the fold. Roomier on desktop. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <p className="text-sm text-ink">
-          <span className="font-semibold">You're looking at example numbers</span>
-          <span className="hidden sm:inline">{" — they're made up so you can explore everything safely."}</span>
+          {demo ? (
+            // Batch 9a: the demo makes it plain that typed numbers aren't kept.
+            <span className="font-medium">{DEMO_BANNER_TEXT}</span>
+          ) : (
+            <>
+              <span className="font-semibold">You're looking at example numbers</span>
+              <span className="hidden sm:inline">{" — they're made up so you can explore everything safely."}</span>
+            </>
+          )}
         </p>
         <div className="flex flex-wrap gap-2">
+          {demo && (
+            <a
+              href={ETSY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded-control bg-gold px-3 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px]"
+            >
+              Get the full app
+            </a>
+          )}
           <button
             onClick={startMine}
-            className="rounded-control bg-gold px-3 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px]"
+            className={
+              demo
+                ? "rounded-control border border-hairline px-3 py-2 text-sm font-medium text-muted hover:text-ink min-h-[40px]"
+                : "rounded-control bg-gold px-3 py-2 text-sm font-semibold text-base hover:opacity-90 min-h-[40px]"
+            }
           >
             Start with my numbers
           </button>
@@ -63,12 +87,14 @@ export function WelcomeBanner() {
           >
             Keep exploring
           </button>
-          <button
-            onClick={() => navigate("/more")}
-            className="rounded-control border border-hairline px-3 py-2 text-sm font-medium text-muted hover:text-ink min-h-[40px]"
-          >
-            I already have a planner
-          </button>
+          {!demo && (
+            <button
+              onClick={() => navigate("/more")}
+              className="rounded-control border border-hairline px-3 py-2 text-sm font-medium text-muted hover:text-ink min-h-[40px]"
+            >
+              I already have a planner
+            </button>
+          )}
         </div>
       </div>
     </div>

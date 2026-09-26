@@ -18,6 +18,28 @@ export const isDemo = EDITION === "demo";
 /** Where the demo points buyers to the full planner. Set per deploy; optional. */
 export const SHOP_URL: string | undefined = import.meta.env.VITE_SHOP_URL as string | undefined;
 
+// --- Batch 9a: demo notice + "Get the full app" (demo edition only) --------
+
+/** The Etsy listing every "Get the full app" button/link opens (new tab). */
+export const ETSY_URL = "https://www.etsy.com/listing/4582519438";
+
+/** The demo welcome-banner copy (only shown in the demo edition). */
+export const DEMO_BANNER_TEXT =
+  "This is the free demo. Anything you type here is cleared when you refresh. To keep your own numbers on your phone or computer, get the full app.";
+
+/** The one-line note shown at the top of every setup step in the demo. */
+export const DEMO_SETUP_NOTE =
+  "Demo: your numbers won't be kept after you refresh. Get the full app to save them.";
+
+/**
+ * Whether the demo-only notices (banner copy, top-bar button, setup note) show.
+ * True ONLY in the demo edition; the full edition shows none of them. Injectable
+ * so it can be tested for both editions.
+ */
+export function showDemoNotice(edition: Edition = EDITION): boolean {
+  return edition === "demo";
+}
+
 /** The gentle cap in the demo edition. Everything the user wrote stays readable. */
 export const DEMO_SPEND_LIMIT = 40;
 
