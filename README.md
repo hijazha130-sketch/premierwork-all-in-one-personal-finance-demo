@@ -1,5 +1,11 @@
 # All in One Personal Finance — Demo
 
+> **Since 9 Oct 2026 this repo only HOSTS the demo.** The page (`index.html`, `docs/index.html`,
+> `CashHorizon_Demo.html`, `version.json`) is built from the product repo
+> (`premierwork-all-in-one-personal-finance`, `npm run build:pages-demo`) and pushed here automatically
+> on every push to its main branch (`.github/workflows/deploy-demo.yml` there). Don't edit the built
+> files here by hand. The `src/` folder below is the old Batch 9a copy, kept only for reference.
+
 A **live, public demo** of the *All in One Personal Finance* app. It is the complete
 application — the real UI, navigation, and features — running in a temporary demo
 mode. It tracks the product through **Phase 6 (The Conversion Layer)**: the Today
